@@ -4,7 +4,12 @@ from sqlalchemy import Enum, ForeignKey, JSON, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base, TimestampMixin
-from backend.app.models.enums import BucketType, RecommendationStatus
+from backend.app.models.enums import (
+    BucketType,
+    ComplianceStatus,
+    RecommendationStatus,
+    RecommendationType,
+)
 
 
 class Recommendation(TimestampMixin, Base):
@@ -16,6 +21,19 @@ class Recommendation(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    recommendation_type: Mapped[RecommendationType] = mapped_column(
+        Enum(RecommendationType),
+        nullable=False,
+        index=True,
+    )
+    why_now: Mapped[str] = mapped_column(Text, nullable=False)
+    risk_notes: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence_score: Mapped[float] = mapped_column(nullable=False)
+    compliance_status: Mapped[ComplianceStatus] = mapped_column(
+        Enum(ComplianceStatus),
+        nullable=False,
+        default=ComplianceStatus.MANUAL_REVIEW_REQUIRED,
+    )
     status: Mapped[RecommendationStatus] = mapped_column(
         Enum(RecommendationStatus),
         default=RecommendationStatus.PENDING,
@@ -27,6 +45,10 @@ class Recommendation(TimestampMixin, Base):
         nullable=True,
     )
     mock_price: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    market_snapshot_id: Mapped[int | None] = mapped_column(
+        ForeignKey("market_snapshots.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     market_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(nullable=True)

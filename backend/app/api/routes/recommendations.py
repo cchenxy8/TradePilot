@@ -9,6 +9,7 @@ from backend.app.schemas.decision import RecommendationDecisionRequest
 from backend.app.schemas.recommendation import RecommendationCreate, RecommendationRead
 from backend.app.services.audit import log_event
 from backend.app.services.mock_market_data import get_mock_quote
+from backend.app.services.recommendation_engine import generate_swing_recommendations
 
 
 router = APIRouter()
@@ -54,6 +55,11 @@ def create_recommendation(
     db.commit()
     db.refresh(recommendation)
     return recommendation
+
+
+@router.post("/generate/swing", response_model=list[RecommendationRead], status_code=status.HTTP_201_CREATED)
+def generate_swing_queue(db: Session = Depends(get_db)) -> list[Recommendation]:
+    return generate_swing_recommendations(db)
 
 
 @router.post(

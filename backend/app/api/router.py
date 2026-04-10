@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from backend.app.api.routes import health, journal, recommendations, watchlists
+from backend.app.api.routes import health, journal, recommendations, system, watchlists
 
 
 api_router = APIRouter()
@@ -12,3 +12,4 @@ api_router.include_router(
     tags=["recommendations"],
 )
 api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
+api_router.include_router(system.router, prefix="/system", tags=["system"])
