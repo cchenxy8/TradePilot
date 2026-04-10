@@ -7,21 +7,35 @@ class BucketType(str, enum.Enum):
     EVENT = "event"
 
 
-class RecommendationStatus(str, enum.Enum):
+class RecommendationDecisionStatus(str, enum.Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
     DEFERRED = "deferred"
 
 
-class RecommendationType(str, enum.Enum):
-    WATCHLIST_FOLLOW_UP = "watchlist_follow_up"
+class RecommendationAction(str, enum.Enum):
+    BUY = "buy"
+    SELL = "sell"
+    WATCH = "watch"
+    AVOID = "avoid"
+
+
+class SetupType(str, enum.Enum):
+    LONG_TERM_WATCH = "long_term_watch"
     SWING_ENTRY = "swing_entry"
     SWING_ADD = "swing_add"
     EVENT_SETUP = "event_setup"
 
 
 class ComplianceStatus(str, enum.Enum):
-    MANUAL_REVIEW_REQUIRED = "manual_review_required"
-    READY_FOR_REVIEW = "ready_for_review"
-    RESTRICTED = "restricted"
+    ALLOWED = "allowed"
+    NEEDS_REVIEW = "needs_review"
+    BLOCKED = "blocked"
+
+
+class WatchlistStatus(str, enum.Enum):
+    WATCHING = "watching"
+    CANDIDATE = "candidate"
+    APPROVED = "approved"
+    ARCHIVED = "archived"

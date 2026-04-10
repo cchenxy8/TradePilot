@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from backend.app.models.enums import (
     BucketType,
     ComplianceStatus,
-    RecommendationStatus,
-    RecommendationType,
+    RecommendationAction,
+    RecommendationDecisionStatus,
+    SetupType,
 )
 from backend.app.models.market_snapshot import MarketSnapshot
 from backend.app.models.recommendation import Recommendation
@@ -46,7 +47,7 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             select(Recommendation.id)
             .where(
                 Recommendation.watchlist_item_id == item.id,
-                Recommendation.status == RecommendationStatus.PENDING,
+                Recommendation.decision_status == RecommendationDecisionStatus.PENDING,
             )
             .limit(1)
         )
@@ -68,9 +69,8 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             bucket=item.bucket,
             title=f"{item.symbol} swing candidate",
             rationale=item.thesis or "Swing candidate identified from watchlist and mock market data.",
-            recommendation_type=(
-                RecommendationType.SWING_ADD if earnings_near else RecommendationType.SWING_ENTRY
-            ),
+            recommendation_action=RecommendationAction.BUY,
+            setup_type=SetupType.SWING_ADD if earnings_near else SetupType.SWING_ENTRY,
             why_now=(
                 "Momentum is constructive with price above the 20-day moving average and RSI confirming trend quality."
             ),
@@ -78,7 +78,7 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
                 "No automation is enabled. Manual review is required before any trade, especially if earnings are near."
             ),
             confidence_score=min(confidence, 0.96),
-            compliance_status=ComplianceStatus.MANUAL_REVIEW_REQUIRED,
+            compliance_status=ComplianceStatus.NEEDS_REVIEW,
             source="swing_rule_engine",
             watchlist_item_id=item.id,
             market_snapshot_id=snapshot.id,
@@ -94,7 +94,8 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             entity_id=recommendation.id,
             payload={
                 "symbol": recommendation.symbol,
-                "recommendation_type": recommendation.recommendation_type.value,
+                "recommendation_action": recommendation.recommendation_action.value,
+                "setup_type": recommendation.setup_type.value,
                 "confidence_score": recommendation.confidence_score,
                 "compliance_status": recommendation.compliance_status.value,
                 "engine": "swing_rule_engine",

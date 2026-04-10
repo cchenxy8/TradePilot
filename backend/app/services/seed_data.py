@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from backend.app.models.enums import (
     BucketType,
     ComplianceStatus,
-    RecommendationType,
+    RecommendationAction,
+    SetupType,
+    WatchlistStatus,
 )
 from backend.app.models.market_snapshot import MarketSnapshot
 from backend.app.models.recommendation import Recommendation
@@ -22,10 +24,14 @@ ASSET_SEEDS = [
         "thesis": "Large-cap quality compounder with durable ecosystem strength.",
         "mock_price": Decimal("212.40"),
         "volume": 74200000,
+        "avg_volume_20d": 69800000,
         "moving_average_20": Decimal("205.10"),
+        "ma50": Decimal("198.40"),
+        "daily_change_pct": 1.12,
         "rsi_14": 61.5,
         "earnings_offset_days": 26,
         "news_summary": "Services growth stays resilient while hardware demand stabilizes.",
+        "watchlist_status": WatchlistStatus.APPROVED,
     },
     {
         "symbol": "MSFT",
@@ -33,10 +39,14 @@ ASSET_SEEDS = [
         "thesis": "Cloud and AI platform leader with steady institutional sponsorship.",
         "mock_price": Decimal("428.60"),
         "volume": 31100000,
+        "avg_volume_20d": 29500000,
         "moving_average_20": Decimal("420.80"),
+        "ma50": Decimal("409.10"),
+        "daily_change_pct": 0.76,
         "rsi_14": 58.2,
         "earnings_offset_days": 19,
         "news_summary": "Enterprise AI adoption remains supportive for cloud sentiment.",
+        "watchlist_status": WatchlistStatus.WATCHING,
     },
     {
         "symbol": "AMZN",
@@ -44,10 +54,14 @@ ASSET_SEEDS = [
         "thesis": "Retail and cloud mix offers multi-engine earnings expansion.",
         "mock_price": Decimal("189.25"),
         "volume": 46800000,
+        "avg_volume_20d": 45200000,
         "moving_average_20": Decimal("184.90"),
+        "ma50": Decimal("179.80"),
+        "daily_change_pct": 0.64,
         "rsi_14": 55.4,
         "earnings_offset_days": 21,
         "news_summary": "Margin discipline offsets mixed consumer spending data.",
+        "watchlist_status": WatchlistStatus.CANDIDATE,
     },
     {
         "symbol": "NVDA",
@@ -55,10 +69,14 @@ ASSET_SEEDS = [
         "thesis": "Momentum leader with strong relative strength and AI tailwinds.",
         "mock_price": Decimal("941.70"),
         "volume": 59300000,
+        "avg_volume_20d": 57100000,
         "moving_average_20": Decimal("902.30"),
+        "ma50": Decimal("861.50"),
+        "daily_change_pct": 2.41,
         "rsi_14": 67.9,
         "earnings_offset_days": 18,
         "news_summary": "Supply commentary and AI demand headlines remain supportive.",
+        "watchlist_status": WatchlistStatus.APPROVED,
     },
     {
         "symbol": "AMD",
@@ -66,10 +84,14 @@ ASSET_SEEDS = [
         "thesis": "Chip cycle participation with improving data-center narrative.",
         "mock_price": Decimal("173.90"),
         "volume": 52400000,
+        "avg_volume_20d": 49800000,
         "moving_average_20": Decimal("165.10"),
+        "ma50": Decimal("158.90"),
+        "daily_change_pct": 1.35,
         "rsi_14": 63.4,
         "earnings_offset_days": 15,
         "news_summary": "Data center product cycle keeps sentiment constructive.",
+        "watchlist_status": WatchlistStatus.CANDIDATE,
     },
     {
         "symbol": "META",
@@ -77,10 +99,14 @@ ASSET_SEEDS = [
         "thesis": "Ad efficiency and engagement improvements support trend continuation.",
         "mock_price": Decimal("512.80"),
         "volume": 20700000,
+        "avg_volume_20d": 19900000,
         "moving_average_20": Decimal("500.40"),
+        "ma50": Decimal("486.70"),
+        "daily_change_pct": 0.92,
         "rsi_14": 59.7,
         "earnings_offset_days": 17,
         "news_summary": "Ad pricing and AI engagement headlines support upside follow-through.",
+        "watchlist_status": WatchlistStatus.WATCHING,
     },
     {
         "symbol": "TSLA",
@@ -88,10 +114,14 @@ ASSET_SEEDS = [
         "thesis": "High-beta swing name with event-driven volatility and retail interest.",
         "mock_price": Decimal("187.30"),
         "volume": 108200000,
+        "avg_volume_20d": 112500000,
         "moving_average_20": Decimal("193.40"),
+        "ma50": Decimal("201.10"),
+        "daily_change_pct": -1.84,
         "rsi_14": 42.8,
         "earnings_offset_days": 11,
         "news_summary": "Delivery and margin concerns continue to pressure trend quality.",
+        "watchlist_status": WatchlistStatus.WATCHING,
     },
     {
         "symbol": "SNOW",
@@ -99,10 +129,14 @@ ASSET_SEEDS = [
         "thesis": "Event-driven setup tied to product launches and guidance revisions.",
         "mock_price": Decimal("171.20"),
         "volume": 7600000,
+        "avg_volume_20d": 7050000,
         "moving_average_20": Decimal("167.90"),
+        "ma50": Decimal("162.30"),
+        "daily_change_pct": 1.08,
         "rsi_14": 53.3,
         "earnings_offset_days": 9,
         "news_summary": "Platform announcements may reshape near-term growth expectations.",
+        "watchlist_status": WatchlistStatus.CANDIDATE,
     },
     {
         "symbol": "SHOP",
@@ -110,10 +144,14 @@ ASSET_SEEDS = [
         "thesis": "Merchant growth and product roadmap create catalyst-driven upside.",
         "mock_price": Decimal("78.40"),
         "volume": 12400000,
+        "avg_volume_20d": 11800000,
         "moving_average_20": Decimal("75.50"),
+        "ma50": Decimal("72.10"),
+        "daily_change_pct": 1.26,
         "rsi_14": 57.1,
         "earnings_offset_days": 13,
         "news_summary": "Merchant tools rollout and margin story improve event interest.",
+        "watchlist_status": WatchlistStatus.WATCHING,
     },
     {
         "symbol": "PLTR",
@@ -121,10 +159,14 @@ ASSET_SEEDS = [
         "thesis": "Government and enterprise pipeline can re-rate on contract wins.",
         "mock_price": Decimal("28.60"),
         "volume": 68500000,
+        "avg_volume_20d": 64200000,
         "moving_average_20": Decimal("27.20"),
+        "ma50": Decimal("25.80"),
+        "daily_change_pct": 1.94,
         "rsi_14": 64.6,
         "earnings_offset_days": 7,
         "news_summary": "New contract headlines keep traders focused on catalyst timing.",
+        "watchlist_status": WatchlistStatus.APPROVED,
     },
 ]
 
@@ -146,6 +188,7 @@ def seed_demo_data(db: Session) -> dict[str, int]:
         watchlist_item = WatchlistItem(
             symbol=asset["symbol"],
             bucket=asset["bucket"],
+            status=asset["watchlist_status"],
             thesis=asset["thesis"],
             is_active=True,
         )
@@ -158,7 +201,10 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             "symbol": asset["symbol"],
             "mock_price": float(asset["mock_price"]),
             "volume": asset["volume"],
+            "avg_volume_20d": asset["avg_volume_20d"],
             "moving_average_20": float(asset["moving_average_20"]),
+            "ma50": float(asset["ma50"]),
+            "daily_change_pct": asset["daily_change_pct"],
             "rsi_14": asset["rsi_14"],
             "earnings_date": earnings_date.isoformat(),
             "news_summary": asset["news_summary"],
@@ -168,7 +214,10 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             watchlist_item_id=watchlist_item.id,
             mock_price=asset["mock_price"],
             volume=asset["volume"],
+            avg_volume_20d=asset["avg_volume_20d"],
             moving_average_20=asset["moving_average_20"],
+            ma50=asset["ma50"],
+            daily_change_pct=asset["daily_change_pct"],
             rsi_14=asset["rsi_14"],
             earnings_date=earnings_date,
             news_summary=asset["news_summary"],
@@ -192,7 +241,7 @@ def seed_demo_data(db: Session) -> dict[str, int]:
         if not above_ma or not constructive_rsi:
             continue
 
-        rec_type = RecommendationType.SWING_ADD if near_earnings else RecommendationType.SWING_ENTRY
+        setup_type = SetupType.SWING_ADD if near_earnings else SetupType.SWING_ENTRY
         why_now = "Price is holding above the 20-day moving average with RSI in a constructive swing range."
         if near_earnings:
             why_now += " Earnings are approaching, which can increase attention and volatility."
@@ -202,7 +251,8 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             bucket=watchlist_item.bucket,
             title=f"{watchlist_item.symbol} swing setup ready for manual review",
             rationale=watchlist_item.thesis or "Swing setup flagged by mock rule engine.",
-            recommendation_type=rec_type,
+            recommendation_action=RecommendationAction.BUY,
+            setup_type=setup_type,
             why_now=why_now,
             risk_notes=(
                 "Manual decision required. Gap risk around catalysts and momentum reversals can invalidate the setup."
@@ -217,7 +267,7 @@ def seed_demo_data(db: Session) -> dict[str, int]:
                     2,
                 ),
             ),
-            compliance_status=ComplianceStatus.MANUAL_REVIEW_REQUIRED,
+            compliance_status=ComplianceStatus.NEEDS_REVIEW,
             source="seed_rule_engine",
             watchlist_item_id=watchlist_item.id,
             market_snapshot_id=snapshot.id,

@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from backend.app.models.enums import (
     BucketType,
     ComplianceStatus,
-    RecommendationStatus,
-    RecommendationType,
+    RecommendationAction,
+    RecommendationDecisionStatus,
+    SetupType,
 )
 from backend.app.schemas.common import TimestampedRead
 
@@ -16,11 +17,12 @@ class RecommendationCreate(BaseModel):
     bucket: BucketType
     title: str
     rationale: str
-    recommendation_type: RecommendationType
+    recommendation_action: RecommendationAction
+    setup_type: SetupType
     why_now: str
     risk_notes: str
     confidence_score: float
-    compliance_status: ComplianceStatus = ComplianceStatus.MANUAL_REVIEW_REQUIRED
+    compliance_status: ComplianceStatus = ComplianceStatus.NEEDS_REVIEW
     source: str | None = None
     watchlist_item_id: int | None = None
 
@@ -31,13 +33,14 @@ class RecommendationRead(TimestampedRead):
     bucket: BucketType
     title: str
     rationale: str
-    recommendation_type: RecommendationType
+    recommendation_action: RecommendationAction
+    setup_type: SetupType
     why_now: str
     risk_notes: str
     confidence_score: float
     compliance_status: ComplianceStatus
     source: str | None
-    status: RecommendationStatus
+    decision_status: RecommendationDecisionStatus
     watchlist_item_id: int | None
     market_snapshot_id: int | None
     mock_price: float | None

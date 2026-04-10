@@ -7,8 +7,9 @@ from backend.app.db.base import Base, TimestampMixin
 from backend.app.models.enums import (
     BucketType,
     ComplianceStatus,
-    RecommendationStatus,
-    RecommendationType,
+    RecommendationAction,
+    RecommendationDecisionStatus,
+    SetupType,
 )
 
 
@@ -21,8 +22,13 @@ class Recommendation(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    recommendation_type: Mapped[RecommendationType] = mapped_column(
-        Enum(RecommendationType),
+    recommendation_action: Mapped[RecommendationAction] = mapped_column(
+        Enum(RecommendationAction),
+        nullable=False,
+        index=True,
+    )
+    setup_type: Mapped[SetupType] = mapped_column(
+        Enum(SetupType),
         nullable=False,
         index=True,
     )
@@ -32,11 +38,11 @@ class Recommendation(TimestampMixin, Base):
     compliance_status: Mapped[ComplianceStatus] = mapped_column(
         Enum(ComplianceStatus),
         nullable=False,
-        default=ComplianceStatus.MANUAL_REVIEW_REQUIRED,
+        default=ComplianceStatus.NEEDS_REVIEW,
     )
-    status: Mapped[RecommendationStatus] = mapped_column(
-        Enum(RecommendationStatus),
-        default=RecommendationStatus.PENDING,
+    decision_status: Mapped[RecommendationDecisionStatus] = mapped_column(
+        Enum(RecommendationDecisionStatus),
+        default=RecommendationDecisionStatus.PENDING,
         nullable=False,
         index=True,
     )

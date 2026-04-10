@@ -9,7 +9,10 @@ class MarketSnapshotRead(TimestampedRead):
     watchlist_item_id: int | None
     mock_price: float
     volume: int
+    avg_volume_20d: int
     moving_average_20: float
+    ma50: float
+    daily_change_pct: float
     rsi_14: float
     earnings_date: date | None
     news_summary: str | None

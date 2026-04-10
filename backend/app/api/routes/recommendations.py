@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
-from backend.app.models.enums import BucketType, RecommendationStatus
+from backend.app.models.enums import BucketType, RecommendationDecisionStatus
 from backend.app.models.recommendation import Recommendation
 from backend.app.schemas.decision import RecommendationDecisionRequest
 from backend.app.schemas.recommendation import RecommendationCreate, RecommendationRead
@@ -17,13 +17,13 @@ router = APIRouter()
 
 @router.get("", response_model=list[RecommendationRead])
 def list_recommendations(
-    status_filter: RecommendationStatus | None = Query(default=None, alias="status"),
+    decision_status: RecommendationDecisionStatus | None = Query(default=None),
     bucket: BucketType | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[Recommendation]:
     query = select(Recommendation).order_by(Recommendation.generated_at.desc())
-    if status_filter is not None:
-        query = query.where(Recommendation.status == status_filter)
+    if decision_status is not None:
+        query = query.where(Recommendation.decision_status == decision_status)
     if bucket is not None:
         query = query.where(Recommendation.bucket == bucket)
     return list(db.scalars(query))
@@ -75,17 +75,17 @@ def decide_recommendation(
     recommendation = db.get(Recommendation, recommendation_id)
     if recommendation is None:
         raise HTTPException(status_code=404, detail="Recommendation not found")
-    if payload.action == RecommendationStatus.PENDING:
-        raise HTTPException(status_code=400, detail="Decision action must not be pending")
+    if payload.decision == RecommendationDecisionStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Decision must not be pending")
 
-    recommendation.status = payload.action
+    recommendation.decision_status = payload.decision
     recommendation.decision_reason = payload.reason
     recommendation.decided_at = payload.decided_at
 
     db.flush()
     log_event(
         db,
-        event_type=f"recommendation.{payload.action.value}",
+        event_type=f"recommendation.{payload.decision.value}",
         entity_type="recommendation",
         entity_id=recommendation.id,
         payload=payload.model_dump(mode="json"),
