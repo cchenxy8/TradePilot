@@ -1,0 +1,17 @@
+[project]
+name = "tradepilot-backend"
+version = "0.1.0"
+description = "Backend MVP for a single-user trading research assistant"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0,<1.0.0",
+  "uvicorn[standard]>=0.30.0,<1.0.0",
+  "sqlalchemy>=2.0.30,<3.0.0",
+  "psycopg[binary]>=3.2.0,<4.0.0",
+  "pydantic-settings>=2.3.0,<3.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
