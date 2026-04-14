@@ -11,6 +11,7 @@ import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { MetricCard } from "../components/MetricCard";
 import { RecommendationCard } from "../components/RecommendationCard";
+import { labelBucket } from "../utils/labels";
 
 interface DashboardProps {
   onNavigate: (page: "watchlist" | "recommendations" | "journal") => void;
@@ -126,7 +127,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <div className="bucket-grid">
           {Object.entries(bucketCounts).map(([bucketName, count]) => (
             <div key={bucketName} className="bucket-row">
-              <span>{bucketName}</span>
+              <span>{labelBucket(bucketName as keyof typeof bucketCounts)}</span>
               <div>
                 <span style={{ width: `${recommendations.length ? (count / recommendations.length) * 100 : 0}%` }} />
               </div>

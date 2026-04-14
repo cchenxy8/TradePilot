@@ -4,6 +4,7 @@ import type { BucketType, Recommendation, WatchlistItem, WatchlistStatus } from 
 import { EmptyState } from "../components/EmptyState";
 import { FilterBar } from "../components/FilterBar";
 import { LoadingState } from "../components/LoadingState";
+import { labelAction, labelBucket, labelSetup, labelWatchlistStatus } from "../utils/labels";
 
 const statusOptions: Array<WatchlistStatus | "all"> = ["all", "watching", "candidate", "approved", "archived"];
 
@@ -98,9 +99,9 @@ export function Watchlist() {
         <label>
           Bucket
           <select value={newBucket} onChange={(event) => setNewBucket(event.target.value as BucketType)}>
-            <option value="core">core</option>
-            <option value="swing">swing</option>
-            <option value="event">event</option>
+            <option value="core">Core</option>
+            <option value="swing">Swing</option>
+            <option value="event">Event</option>
           </select>
         </label>
         <label className="wide-field">
@@ -133,10 +134,10 @@ export function Watchlist() {
             <article className="watchlist-card" key={item.id}>
               <div className="card-heading">
                 <div>
-                  <p className="eyebrow">{item.bucket}</p>
+                  <p className="meta-line">{labelBucket(item.bucket)}</p>
                   <h3>{item.symbol}</h3>
                 </div>
-                <span className={`status-pill ${item.status}`}>{item.status}</span>
+                <span className={`status-pill ${item.status}`}>{labelWatchlistStatus(item.status)}</span>
               </div>
               <p>{item.thesis ?? "No thesis yet."}</p>
               <div className="field-grid">
@@ -153,7 +154,7 @@ export function Watchlist() {
                 <section className="linked-recommendation">
                   <h4>Linked recommendation</h4>
                   <p>
-                    {linkedRecommendation.recommendation_action} / {linkedRecommendation.setup_type} /{" "}
+                    {labelAction(linkedRecommendation.recommendation_action)} / {labelSetup(linkedRecommendation.setup_type)} /{" "}
                     {Math.round(linkedRecommendation.confidence_score * 100)}% confidence
                   </p>
                   <small>{linkedRecommendation.why_now}</small>

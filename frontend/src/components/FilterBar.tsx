@@ -1,4 +1,5 @@
 import type { BucketType, RecommendationDecisionStatus, WatchlistStatus } from "../api/types";
+import { labelBucket, labelFilter } from "../utils/labels";
 
 interface FilterBarProps {
   bucket?: BucketType | "all";
@@ -25,7 +26,7 @@ export function FilterBar({
           <select value={bucket} onChange={(event) => onBucketChange(event.target.value as BucketType | "all")}>
             {bucketOptions.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {option === "all" ? "All" : labelBucket(option)}
               </option>
             ))}
           </select>
@@ -38,7 +39,7 @@ export function FilterBar({
           <select value={status} onChange={(event) => onStatusChange(event.target.value)}>
             {statusOptions.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {labelFilter(option)}
               </option>
             ))}
           </select>

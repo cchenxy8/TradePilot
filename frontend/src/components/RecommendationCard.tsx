@@ -1,4 +1,5 @@
 import type { Recommendation, RecommendationDecisionRequest } from "../api/types";
+import { labelAction, labelBucket, labelCompliance, labelDecision, labelSetup } from "../utils/labels";
 
 interface RecommendationCardProps {
   recommendation: Recommendation;
@@ -32,25 +33,29 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
     <article className={`recommendation-card ${compact ? "compact-card" : ""}`}>
       <div className="card-heading">
         <div>
-          <p className="eyebrow">
-            {recommendation.bucket} / {recommendation.setup_type}
+          <p className="meta-line">
+            {labelBucket(recommendation.bucket)} / {labelSetup(recommendation.setup_type)}
           </p>
-          <h3>
-            {recommendation.symbol}
-            <span>{recommendation.recommendation_action}</span>
-          </h3>
+          <h3>{recommendation.symbol}</h3>
         </div>
-        <span className={`status-pill ${recommendation.decision_status}`}>{recommendation.decision_status}</span>
+        <div className="card-badges">
+          <span className={`action-badge ${recommendation.recommendation_action}`}>
+            {labelAction(recommendation.recommendation_action)}
+          </span>
+          <span className={`status-pill ${recommendation.decision_status}`}>
+            {labelDecision(recommendation.decision_status)}
+          </span>
+        </div>
       </div>
 
       <div className="decision-strip">
-        <div>
+        <div className="confidence-metric">
           <span>Confidence</span>
           <strong>{formatPercent(recommendation.confidence_score)}</strong>
         </div>
-        <div>
+        <div className={`compliance-metric ${recommendation.compliance_status}`}>
           <span>Compliance</span>
-          <strong>{recommendation.compliance_status}</strong>
+          <strong>{labelCompliance(recommendation.compliance_status)}</strong>
         </div>
         <div>
           <span>Mock price</span>
@@ -58,12 +63,12 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
         </div>
       </div>
 
-      <section>
+      <section className="card-copy">
         <h4>Why now</h4>
         <p>{recommendation.why_now}</p>
       </section>
 
-      <section>
+      <section className="card-copy risk-copy">
         <h4>Risk notes</h4>
         <p>{recommendation.risk_notes}</p>
       </section>

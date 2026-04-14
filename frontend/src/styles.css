@@ -178,6 +178,14 @@ main {
   text-transform: uppercase;
 }
 
+.meta-line {
+  color: #697872;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0;
+}
+
 .muted {
   color: #66736e;
 }
@@ -249,19 +257,36 @@ main {
 }
 
 .recommendation-card h3 {
-  align-items: baseline;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
+  font-size: 1.55rem;
+  line-height: 1.05;
 }
 
-.recommendation-card h3 span {
+.card-badges {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.action-badge {
   border-radius: 999px;
   background: #e7f0eb;
   color: #0f6b56;
   font-size: 0.78rem;
-  padding: 0.25rem 0.5rem;
-  text-transform: uppercase;
+  font-weight: 800;
+  padding: 0.42rem 0.7rem;
+}
+
+.action-badge.sell,
+.action-badge.avoid {
+  background: #f1dada;
+  color: #853737;
+}
+
+.action-badge.watch {
+  background: #e7e0cf;
+  color: #5b4916;
 }
 
 .field-grid,
@@ -273,7 +298,8 @@ main {
 }
 
 .decision-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  grid-template-columns: 1.1fr 1fr 1fr;
 }
 
 .field-grid div,
@@ -290,8 +316,41 @@ main {
   background: #e7f0eb;
 }
 
+.decision-strip .compliance-metric.allowed {
+  background: #edf8f2;
+}
+
+.decision-strip .compliance-metric.needs_review {
+  background: #fff7d6;
+}
+
+.decision-strip .compliance-metric.blocked {
+  background: #f1dada;
+}
+
 .decision-strip strong {
   font-size: 1.15rem;
+}
+
+.confidence-metric strong {
+  color: #0f6b56;
+  font-size: 1.55rem;
+}
+
+.card-copy {
+  display: grid;
+  gap: 0.45rem;
+  line-height: 1.45;
+}
+
+.card-copy h4 {
+  color: #26332e;
+  font-size: 0.92rem;
+}
+
+.risk-copy {
+  border-left: 3px solid #d9b2b2;
+  padding-left: 0.8rem;
 }
 
 .compact-card {
@@ -318,7 +377,6 @@ main {
   font-size: 0.76rem;
   font-weight: 800;
   padding: 0.35rem 0.6rem;
-  text-transform: uppercase;
 }
 
 .status-pill.approved {
@@ -414,11 +472,33 @@ main {
   border: 1px solid #dce4df;
   border-radius: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 1rem;
+  padding: 1.15rem;
 }
 
 .journal-form button {
   justify-self: start;
+}
+
+.journal-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-heading {
+  align-items: end;
+  border-bottom: 1px solid #dce4df;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0.9rem;
+}
+
+.form-heading h3 {
+  margin: 0.25rem 0 0;
+}
+
+.form-heading span {
+  color: #66736e;
+  font-size: 0.86rem;
 }
 
 label {
@@ -447,6 +527,85 @@ label {
 .journal-list {
   display: grid;
   gap: 1rem;
+}
+
+.journal-entry {
+  border-left: 4px solid #0f6b56;
+  gap: 1.05rem;
+}
+
+.journal-entry-header {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.journal-entry-header h3 {
+  font-size: 1.18rem;
+  line-height: 1.2;
+}
+
+.updated-stamp {
+  color: #66736e;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.18rem;
+  text-align: right;
+}
+
+.updated-stamp span {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.updated-stamp strong {
+  color: #26332e;
+  font-size: 0.9rem;
+}
+
+.journal-metrics {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.journal-metrics div {
+  background: #f5f7f4;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.75rem;
+}
+
+.journal-metrics span {
+  color: #66736e;
+  font-size: 0.78rem;
+}
+
+.journal-metrics strong {
+  color: #26332e;
+  font-size: 0.98rem;
+}
+
+.journal-preview {
+  background: #fbfcfa;
+  border: 1px solid #e5ebe7;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem;
+}
+
+.journal-preview h4,
+.journal-preview p {
+  margin: 0;
+}
+
+.journal-preview p {
+  color: #394742;
+  line-height: 1.45;
 }
 
 .decision-dashboard {
@@ -605,6 +764,7 @@ label {
   .decision-strip,
   .decision-actions,
   .snapshot-grid,
+  .journal-metrics,
   .watchlist-grid,
   .filter-bar,
   .inline-form,
@@ -614,8 +774,13 @@ label {
 
   .page-header,
   .section-heading,
-  .card-heading {
+  .card-heading,
+  .journal-entry-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .updated-stamp {
+    text-align: left;
   }
 }
