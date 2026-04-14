@@ -43,6 +43,7 @@ class RecommendationRead(TimestampedRead):
     decision_status: RecommendationDecisionStatus
     watchlist_item_id: int | None
     market_snapshot_id: int | None
+    latest_price: float | None
     mock_price: float | None
     market_snapshot: dict | None
     generated_at: datetime

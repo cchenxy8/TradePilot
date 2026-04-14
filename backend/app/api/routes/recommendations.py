@@ -8,7 +8,7 @@ from backend.app.models.recommendation import Recommendation
 from backend.app.schemas.decision import RecommendationDecisionRequest
 from backend.app.schemas.recommendation import RecommendationCreate, RecommendationRead
 from backend.app.services.audit import log_event
-from backend.app.services.mock_market_data import get_mock_quote
+from backend.app.services.market_data import create_market_snapshot_for_symbol, snapshot_price
 from backend.app.services.recommendation_engine import generate_swing_recommendations
 
 
@@ -34,11 +34,13 @@ def create_recommendation(
     payload: RecommendationCreate,
     db: Session = Depends(get_db),
 ) -> Recommendation:
-    quote = get_mock_quote(payload.symbol)
+    snapshot = create_market_snapshot_for_symbol(db, payload.symbol, payload.watchlist_item_id)
     recommendation = Recommendation(
         **payload.model_dump(),
-        mock_price=quote.price,
-        market_snapshot=quote.model_dump(mode="json"),
+        latest_price=float(snapshot_price(snapshot)),
+        mock_price=None,
+        market_snapshot_id=snapshot.id,
+        market_snapshot=snapshot.snapshot_payload,
     )
     db.add(recommendation)
     db.flush()
@@ -49,7 +51,8 @@ def create_recommendation(
         entity_id=recommendation.id,
         payload={
             **payload.model_dump(mode="json"),
-            "market_snapshot": quote.model_dump(mode="json"),
+            "market_snapshot_id": snapshot.id,
+            "market_snapshot": snapshot.snapshot_payload,
         },
     )
     db.commit()

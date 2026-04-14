@@ -17,12 +17,32 @@ function formatCurrency(value: number | null): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 }
 
+function formatCompactNumber(value: unknown): string {
+  if (typeof value !== "number") return "n/a";
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(value);
+}
+
+function formatChange(value: unknown): string {
+  if (typeof value !== "number") return "n/a";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function formatDate(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0) return "n/a";
+  return new Date(value).toLocaleDateString();
+}
+
 function getSnapshotRows(snapshot: Record<string, unknown> | null): Array<[string, string]> {
   if (!snapshot) return [];
-  return Object.entries(snapshot)
-    .filter(([, value]) => value !== null && value !== undefined && typeof value !== "object")
-    .slice(0, 4)
-    .map(([key, value]) => [key.replaceAll("_", " "), String(value)]);
+  return [
+    ["Daily change", formatChange(snapshot.daily_change_pct)],
+    ["Volume", formatCompactNumber(snapshot.volume)],
+    ["RSI 14", typeof snapshot.rsi_14 === "number" ? snapshot.rsi_14.toFixed(1) : "n/a"],
+    ["Earnings", formatDate(snapshot.earnings_date)]
+  ];
 }
 
 export function RecommendationCard({ recommendation, busy = false, compact = false, onDecision }: RecommendationCardProps) {
@@ -58,8 +78,8 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
           <strong>{labelCompliance(recommendation.compliance_status)}</strong>
         </div>
         <div>
-          <span>Mock price</span>
-          <strong>{formatCurrency(recommendation.mock_price)}</strong>
+          <span>Latest price</span>
+          <strong>{formatCurrency(recommendation.latest_price ?? recommendation.mock_price)}</strong>
         </div>
       </div>
 

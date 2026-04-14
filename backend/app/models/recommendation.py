@@ -50,6 +50,7 @@ class Recommendation(TimestampMixin, Base):
         ForeignKey("watchlist_items.id", ondelete="SET NULL"),
         nullable=True,
     )
+    latest_price: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     mock_price: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     market_snapshot_id: Mapped[int | None] = mapped_column(
         ForeignKey("market_snapshots.id", ondelete="SET NULL"),

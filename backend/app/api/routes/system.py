@@ -6,6 +6,7 @@ from backend.app.db.session import get_db
 from backend.app.models.market_snapshot import MarketSnapshot
 from backend.app.schemas.market_snapshot import MarketSnapshotRead
 from backend.app.schemas.seed import SeedResult
+from backend.app.services.market_data import refresh_watchlist_market_snapshots
 from backend.app.services.seed_data import seed_demo_data
 
 
@@ -28,3 +29,12 @@ def list_market_snapshots(db: Session = Depends(get_db)) -> list[MarketSnapshot]
             )
         )
     )
+
+
+@router.post(
+    "/market-snapshots/refresh",
+    response_model=list[MarketSnapshotRead],
+    status_code=status.HTTP_201_CREATED,
+)
+def refresh_market_snapshots(db: Session = Depends(get_db)) -> list[MarketSnapshot]:
+    return refresh_watchlist_market_snapshots(db)

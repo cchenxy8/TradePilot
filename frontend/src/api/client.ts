@@ -2,6 +2,7 @@ import type {
   BucketType,
   JournalEntry,
   JournalEntryCreate,
+  MarketSnapshot,
   Recommendation,
   RecommendationDecisionRequest,
   RecommendationDecisionStatus,
@@ -89,8 +90,18 @@ export function createJournalEntry(payload: JournalEntryCreate): Promise<Journal
   });
 }
 
+export function listMarketSnapshots(): Promise<MarketSnapshot[]> {
+  return request<MarketSnapshot[]>("/system/market-snapshots");
+}
+
 export function seedDemoData(): Promise<unknown> {
   return request<unknown>("/system/seed", {
+    method: "POST"
+  });
+}
+
+export function refreshMarketSnapshots(): Promise<MarketSnapshot[]> {
+  return request<MarketSnapshot[]>("/system/market-snapshots/refresh", {
     method: "POST"
   });
 }

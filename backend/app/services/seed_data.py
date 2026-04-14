@@ -22,7 +22,7 @@ ASSET_SEEDS = [
         "symbol": "AAPL",
         "bucket": BucketType.CORE,
         "thesis": "Large-cap quality compounder with durable ecosystem strength.",
-        "mock_price": Decimal("212.40"),
+        "latest_price": Decimal("212.40"),
         "volume": 74200000,
         "avg_volume_20d": 69800000,
         "moving_average_20": Decimal("205.10"),
@@ -37,7 +37,7 @@ ASSET_SEEDS = [
         "symbol": "MSFT",
         "bucket": BucketType.CORE,
         "thesis": "Cloud and AI platform leader with steady institutional sponsorship.",
-        "mock_price": Decimal("428.60"),
+        "latest_price": Decimal("428.60"),
         "volume": 31100000,
         "avg_volume_20d": 29500000,
         "moving_average_20": Decimal("420.80"),
@@ -52,7 +52,7 @@ ASSET_SEEDS = [
         "symbol": "AMZN",
         "bucket": BucketType.CORE,
         "thesis": "Retail and cloud mix offers multi-engine earnings expansion.",
-        "mock_price": Decimal("189.25"),
+        "latest_price": Decimal("189.25"),
         "volume": 46800000,
         "avg_volume_20d": 45200000,
         "moving_average_20": Decimal("184.90"),
@@ -67,7 +67,7 @@ ASSET_SEEDS = [
         "symbol": "NVDA",
         "bucket": BucketType.SWING,
         "thesis": "Momentum leader with strong relative strength and AI tailwinds.",
-        "mock_price": Decimal("941.70"),
+        "latest_price": Decimal("941.70"),
         "volume": 59300000,
         "avg_volume_20d": 57100000,
         "moving_average_20": Decimal("902.30"),
@@ -82,7 +82,7 @@ ASSET_SEEDS = [
         "symbol": "AMD",
         "bucket": BucketType.SWING,
         "thesis": "Chip cycle participation with improving data-center narrative.",
-        "mock_price": Decimal("173.90"),
+        "latest_price": Decimal("173.90"),
         "volume": 52400000,
         "avg_volume_20d": 49800000,
         "moving_average_20": Decimal("165.10"),
@@ -97,7 +97,7 @@ ASSET_SEEDS = [
         "symbol": "META",
         "bucket": BucketType.SWING,
         "thesis": "Ad efficiency and engagement improvements support trend continuation.",
-        "mock_price": Decimal("512.80"),
+        "latest_price": Decimal("512.80"),
         "volume": 20700000,
         "avg_volume_20d": 19900000,
         "moving_average_20": Decimal("500.40"),
@@ -112,7 +112,7 @@ ASSET_SEEDS = [
         "symbol": "TSLA",
         "bucket": BucketType.SWING,
         "thesis": "High-beta swing name with event-driven volatility and retail interest.",
-        "mock_price": Decimal("187.30"),
+        "latest_price": Decimal("187.30"),
         "volume": 108200000,
         "avg_volume_20d": 112500000,
         "moving_average_20": Decimal("193.40"),
@@ -127,7 +127,7 @@ ASSET_SEEDS = [
         "symbol": "SNOW",
         "bucket": BucketType.EVENT,
         "thesis": "Event-driven setup tied to product launches and guidance revisions.",
-        "mock_price": Decimal("171.20"),
+        "latest_price": Decimal("171.20"),
         "volume": 7600000,
         "avg_volume_20d": 7050000,
         "moving_average_20": Decimal("167.90"),
@@ -142,7 +142,7 @@ ASSET_SEEDS = [
         "symbol": "SHOP",
         "bucket": BucketType.EVENT,
         "thesis": "Merchant growth and product roadmap create catalyst-driven upside.",
-        "mock_price": Decimal("78.40"),
+        "latest_price": Decimal("78.40"),
         "volume": 12400000,
         "avg_volume_20d": 11800000,
         "moving_average_20": Decimal("75.50"),
@@ -157,7 +157,7 @@ ASSET_SEEDS = [
         "symbol": "PLTR",
         "bucket": BucketType.EVENT,
         "thesis": "Government and enterprise pipeline can re-rate on contract wins.",
-        "mock_price": Decimal("28.60"),
+        "latest_price": Decimal("28.60"),
         "volume": 68500000,
         "avg_volume_20d": 64200000,
         "moving_average_20": Decimal("27.20"),
@@ -199,7 +199,7 @@ def seed_demo_data(db: Session) -> dict[str, int]:
         earnings_date = date.today() + timedelta(days=asset["earnings_offset_days"])
         snapshot_payload = {
             "symbol": asset["symbol"],
-            "mock_price": float(asset["mock_price"]),
+            "latest_price": float(asset["latest_price"]),
             "volume": asset["volume"],
             "avg_volume_20d": asset["avg_volume_20d"],
             "moving_average_20": float(asset["moving_average_20"]),
@@ -208,11 +208,13 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             "rsi_14": asset["rsi_14"],
             "earnings_date": earnings_date.isoformat(),
             "news_summary": asset["news_summary"],
+            "provider": "seed-data",
         }
         snapshot = MarketSnapshot(
             symbol=asset["symbol"],
             watchlist_item_id=watchlist_item.id,
-            mock_price=asset["mock_price"],
+            latest_price=asset["latest_price"],
+            mock_price=None,
             volume=asset["volume"],
             avg_volume_20d=asset["avg_volume_20d"],
             moving_average_20=asset["moving_average_20"],
@@ -232,7 +234,10 @@ def seed_demo_data(db: Session) -> dict[str, int]:
         if watchlist_item.bucket != BucketType.SWING:
             continue
 
-        above_ma = snapshot.mock_price > snapshot.moving_average_20
+        price = snapshot.latest_price or snapshot.mock_price
+        if price is None:
+            continue
+        above_ma = price > snapshot.moving_average_20
         constructive_rsi = 50 <= snapshot.rsi_14 <= 70
         near_earnings = (
             snapshot.earnings_date is not None
@@ -250,7 +255,7 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             symbol=watchlist_item.symbol,
             bucket=watchlist_item.bucket,
             title=f"{watchlist_item.symbol} swing setup ready for manual review",
-            rationale=watchlist_item.thesis or "Swing setup flagged by mock rule engine.",
+            rationale=watchlist_item.thesis or "Swing setup flagged by seeded market data.",
             recommendation_action=RecommendationAction.BUY,
             setup_type=setup_type,
             why_now=why_now,
@@ -271,7 +276,8 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             source="seed_rule_engine",
             watchlist_item_id=watchlist_item.id,
             market_snapshot_id=snapshot.id,
-            mock_price=float(snapshot.mock_price),
+            latest_price=float(price),
+            mock_price=None,
             market_snapshot=snapshot.snapshot_payload,
         )
         db.add(recommendation)

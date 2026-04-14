@@ -32,6 +32,7 @@ export interface Recommendation {
   decision_status: RecommendationDecisionStatus;
   watchlist_item_id: number | null;
   market_snapshot_id: number | null;
+  latest_price: number | null;
   mock_price: number | null;
   market_snapshot: Record<string, unknown> | null;
   generated_at: string;
@@ -76,6 +77,26 @@ export interface JournalEntryCreate {
   stop_loss?: number | null;
   position_size_pct?: number | null;
   outcome_note?: string | null;
+}
+
+export interface MarketSnapshot {
+  id: number;
+  symbol: string;
+  watchlist_item_id: number | null;
+  latest_price: number | null;
+  mock_price: number | null;
+  volume: number;
+  avg_volume_20d: number;
+  moving_average_20: number;
+  ma50: number;
+  daily_change_pct: number;
+  rsi_14: number;
+  earnings_date: string | null;
+  news_summary: string | null;
+  snapshot_payload: Record<string, unknown> | null;
+  captured_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RecommendationDecisionRequest {

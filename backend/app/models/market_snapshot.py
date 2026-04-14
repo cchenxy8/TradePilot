@@ -16,7 +16,8 @@ class MarketSnapshot(TimestampMixin, Base):
         ForeignKey("watchlist_items.id", ondelete="SET NULL"),
         nullable=True,
     )
-    mock_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    latest_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    mock_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     volume: Mapped[int] = mapped_column(nullable=False)
     avg_volume_20d: Mapped[int] = mapped_column(nullable=False)
     moving_average_20: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

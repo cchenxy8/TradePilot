@@ -10,10 +10,15 @@ from backend.app.models.enums import (
     RecommendationDecisionStatus,
     SetupType,
 )
-from backend.app.models.market_snapshot import MarketSnapshot
 from backend.app.models.recommendation import Recommendation
 from backend.app.models.watchlist import WatchlistItem
 from backend.app.services.audit import log_event
+from backend.app.services.market_data import (
+    MarketDataError,
+    create_market_snapshot_for_item,
+    get_latest_snapshot_for_item,
+    snapshot_price,
+)
 
 
 def generate_swing_recommendations(db: Session) -> list[Recommendation]:
@@ -27,18 +32,17 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
 
     created: list[Recommendation] = []
     for item in watchlist_items:
-        snapshot = db.scalar(
-            select(MarketSnapshot)
-            .where(MarketSnapshot.watchlist_item_id == item.id)
-            .order_by(MarketSnapshot.captured_at.desc())
-            .limit(1)
-        )
+        snapshot = get_latest_snapshot_for_item(db, item)
         if snapshot is None:
-            continue
+            try:
+                snapshot = create_market_snapshot_for_item(db, item)
+            except MarketDataError:
+                continue
 
-        above_ma = snapshot.mock_price > snapshot.moving_average_20
+        price = snapshot_price(snapshot)
+        above_ma = price > snapshot.moving_average_20
         rsi_in_range = 52 <= snapshot.rsi_14 <= 68
-        positive_news = bool(snapshot.news_summary and "support" in snapshot.news_summary.lower())
+        positive_market_context = snapshot.daily_change_pct >= 0 and snapshot.volume >= snapshot.avg_volume_20d
         earnings_near = (
             snapshot.earnings_date is not None
             and 0 <= (snapshot.earnings_date - date.today()).days <= 14
@@ -60,7 +64,7 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             0.5
             + (0.18 if above_ma else 0.0)
             + (0.14 if rsi_in_range else 0.0)
-            + (0.08 if positive_news else 0.0)
+            + (0.08 if positive_market_context else 0.0)
             + (0.06 if earnings_near else 0.0),
             2,
         )
@@ -68,11 +72,12 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             symbol=item.symbol,
             bucket=item.bucket,
             title=f"{item.symbol} swing candidate",
-            rationale=item.thesis or "Swing candidate identified from watchlist and mock market data.",
+            rationale=item.thesis or "Swing candidate identified from watchlist and real market data.",
             recommendation_action=RecommendationAction.BUY,
             setup_type=SetupType.SWING_ADD if earnings_near else SetupType.SWING_ENTRY,
             why_now=(
-                "Momentum is constructive with price above the 20-day moving average and RSI confirming trend quality."
+                f"Latest price is above the 20-day moving average with RSI at {snapshot.rsi_14:.1f} "
+                f"and daily change at {snapshot.daily_change_pct:.2f}%."
             ),
             risk_notes=(
                 "No automation is enabled. Manual review is required before any trade, especially if earnings are near."
@@ -82,7 +87,8 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             source="swing_rule_engine",
             watchlist_item_id=item.id,
             market_snapshot_id=snapshot.id,
-            mock_price=float(snapshot.mock_price),
+            latest_price=float(price),
+            mock_price=None,
             market_snapshot=snapshot.snapshot_payload,
         )
         db.add(recommendation)

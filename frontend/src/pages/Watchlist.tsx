@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { createWatchlistItem, listRecommendations, listWatchlistItems } from "../api/client";
-import type { BucketType, Recommendation, WatchlistItem, WatchlistStatus } from "../api/types";
+import { createWatchlistItem, listMarketSnapshots, listRecommendations, listWatchlistItems } from "../api/client";
+import type { BucketType, MarketSnapshot, Recommendation, WatchlistItem, WatchlistStatus } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { FilterBar } from "../components/FilterBar";
 import { LoadingState } from "../components/LoadingState";
@@ -8,9 +8,26 @@ import { labelAction, labelBucket, labelSetup, labelWatchlistStatus } from "../u
 
 const statusOptions: Array<WatchlistStatus | "all"> = ["all", "watching", "candidate", "approved", "archived"];
 
+function formatCurrency(value: number | null): string {
+  if (value === null) return "n/a";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function formatPercent(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(value);
+}
+
 export function Watchlist() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [marketSnapshots, setMarketSnapshots] = useState<MarketSnapshot[]>([]);
   const [bucket, setBucket] = useState<BucketType | "all">("all");
   const [status, setStatus] = useState<WatchlistStatus | "all">("all");
   const [symbol, setSymbol] = useState("");
@@ -23,14 +40,16 @@ export function Watchlist() {
     setLoading(true);
     setMessage(null);
     try {
-      const [data, recommendationData] = await Promise.all([
+      const [data, recommendationData, snapshotData] = await Promise.all([
         listWatchlistItems({
           bucket: bucket === "all" ? undefined : bucket
         }),
-        listRecommendations()
+        listRecommendations(),
+        listMarketSnapshots()
       ]);
       setItems(data);
       setRecommendations(recommendationData);
+      setMarketSnapshots(snapshotData);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load watchlist.");
     } finally {
@@ -55,12 +74,26 @@ export function Watchlist() {
     }
     return map;
   }, [recommendations]);
+  const snapshotsBySymbol = useMemo(() => {
+    const map = new Map<string, MarketSnapshot>();
+    for (const snapshot of marketSnapshots) {
+      const key = snapshot.symbol.toUpperCase();
+      if (!map.has(key)) {
+        map.set(key, snapshot);
+      }
+    }
+    return map;
+  }, [marketSnapshots]);
 
   function getLinkedRecommendation(item: WatchlistItem): Recommendation | undefined {
     return (
       recommendationsByWatchlist.get(item.id) ??
       recommendations.find((recommendation) => recommendation.symbol.toUpperCase() === item.symbol.toUpperCase())
     );
+  }
+
+  function getLatestSnapshot(item: WatchlistItem): MarketSnapshot | undefined {
+    return snapshotsBySymbol.get(item.symbol.toUpperCase());
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -129,6 +162,7 @@ export function Watchlist() {
       <div className="watchlist-grid">
         {filteredItems.map((item) => {
           const linkedRecommendation = getLinkedRecommendation(item);
+          const latestSnapshot = getLatestSnapshot(item);
 
           return (
             <article className="watchlist-card" key={item.id}>
@@ -150,6 +184,17 @@ export function Watchlist() {
                   <strong>{new Date(item.updated_at).toLocaleDateString()}</strong>
                 </div>
               </div>
+              {latestSnapshot ? (
+                <section className="linked-recommendation">
+                  <h4>Market snapshot</h4>
+                  <div className="market-mini-grid">
+                    <span>Price {formatCurrency(latestSnapshot.latest_price ?? latestSnapshot.mock_price)}</span>
+                    <span>Change {formatPercent(latestSnapshot.daily_change_pct)}</span>
+                    <span>Volume {formatCompactNumber(latestSnapshot.volume)}</span>
+                    <span>Earnings {latestSnapshot.earnings_date ? new Date(latestSnapshot.earnings_date).toLocaleDateString() : "n/a"}</span>
+                  </div>
+                </section>
+              ) : null}
               {linkedRecommendation ? (
                 <section className="linked-recommendation">
                   <h4>Linked recommendation</h4>

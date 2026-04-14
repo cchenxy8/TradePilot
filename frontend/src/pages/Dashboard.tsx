@@ -4,6 +4,7 @@ import {
   listJournalEntries,
   listRecommendations,
   listWatchlistItems,
+  refreshMarketSnapshots,
   seedDemoData
 } from "../api/client";
 import type { JournalEntry, Recommendation, WatchlistItem } from "../api/types";
@@ -92,6 +93,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     }
   }
 
+  async function handleRefreshMarketData() {
+    setMessage("Refreshing market data...");
+    try {
+      await refreshMarketSnapshots();
+      await load();
+      setMessage("Market data refreshed.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to refresh market data.");
+    }
+  }
+
   return (
     <section className="page">
       <div className="page-header">
@@ -101,6 +113,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
         <div className="button-row">
           <button onClick={handleSeed}>Seed demo data</button>
+          <button className="secondary" onClick={handleRefreshMarketData}>
+            Refresh market data
+          </button>
           <button className="secondary" onClick={handleGenerate}>
             Generate swing ideas
           </button>

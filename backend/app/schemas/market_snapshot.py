@@ -7,7 +7,8 @@ class MarketSnapshotRead(TimestampedRead):
     id: int
     symbol: str
     watchlist_item_id: int | None
-    mock_price: float
+    latest_price: float | None
+    mock_price: float | None
     volume: int
     avg_volume_20d: int
     moving_average_20: float
