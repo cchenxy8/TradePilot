@@ -39,8 +39,15 @@ export interface Recommendation {
     passed_signals: string[];
     failed_signals: string[];
     penalties: string[];
+    avoid_reasons?: string[];
     final_score: number;
     required_rules_passed: boolean;
+    rsi_zone?: string;
+    score_thresholds?: {
+      buy: number;
+      watch: number;
+      avoid: number;
+    };
     metrics: Record<string, number | null>;
   } | null;
   generated_at: string;

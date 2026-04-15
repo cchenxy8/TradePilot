@@ -110,8 +110,9 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
   const passedSignals = recommendation.rule_results?.passed_signals ?? [];
   const failedSignals = recommendation.rule_results?.failed_signals ?? [];
   const penalties = recommendation.rule_results?.penalties ?? [];
+  const avoidReasons = recommendation.rule_results?.avoid_reasons ?? [];
   const whySummary = conciseSummary(passedSignals, recommendation.why_now);
-  const riskSummary = conciseSummary([...penalties, ...failedSignals], recommendation.risk_notes);
+  const riskSummary = conciseSummary([...avoidReasons, ...penalties, ...failedSignals], recommendation.risk_notes);
   const metricRows = Object.entries(recommendation.rule_results?.metrics ?? {});
 
   return (
@@ -258,6 +259,18 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
                     </ul>
                   ) : (
                     <p>No major penalties.</p>
+                  )}
+                </div>
+                <div>
+                  <span>Avoid triggers</span>
+                  {avoidReasons.length > 0 ? (
+                    <ul>
+                      {avoidReasons.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No avoid triggers.</p>
                   )}
                 </div>
                 <div>

@@ -19,6 +19,14 @@ from backend.app.services.market_data import (
     is_provider_backed,
     snapshot_price,
 )
+from backend.app.services.swing_scoring_config import (
+    SWING_RULE_BOUNDS,
+    SWING_SCORE_BASE,
+    SWING_SCORE_BONUSES,
+    SWING_SCORE_LIMITS,
+    SWING_SCORE_PENALTIES,
+    SWING_SCORE_THRESHOLDS,
+)
 
 
 def _pct_distance(value: Decimal, reference: Decimal) -> float:
@@ -40,91 +48,160 @@ def _evaluate_swing_rules(snapshot, price: Decimal) -> dict:
     passed_signals: list[str] = []
     failed_signals: list[str] = []
     penalties: list[str] = []
-    score = 0.32
+    avoid_reasons: list[str] = []
+    score = SWING_SCORE_BASE
 
-    if price_above_ma20_pct >= 0:
-        contribution = min(0.2, 0.1 + (price_above_ma20_pct / 100))
-        score += contribution
+    if 0 <= price_above_ma20_pct <= SWING_RULE_BOUNDS["price_extended_above_ma20_pct"]:
+        score += SWING_SCORE_BONUSES["price_above_ma20"]
         passed_signals.append(
             f"Price is {price_above_ma20_pct:.1f}% above the 20-day moving average."
         )
+    elif price_above_ma20_pct > SWING_RULE_BOUNDS["price_extended_above_ma20_pct"]:
+        score += SWING_SCORE_BONUSES["price_above_ma20_extended"]
+        passed_signals.append("Price is above the 20-day moving average.")
+        penalties.append(
+            f"Price is {price_above_ma20_pct:.1f}% above the 20-day moving average, which is extended for a fresh swing entry."
+        )
     else:
-        score -= 0.18
+        penalty = (
+            SWING_SCORE_PENALTIES["price_slightly_below_ma20"]
+            if price_above_ma20_pct >= SWING_RULE_BOUNDS["price_materially_below_ma20_pct"]
+            else SWING_SCORE_PENALTIES["price_materially_below_ma20"]
+        )
+        score -= penalty
         failed_signals.append("Price is not above the 20-day moving average.")
         penalties.append(f"Price is {abs(price_above_ma20_pct):.1f}% below the 20-day moving average.")
+        if price_above_ma20_pct < SWING_RULE_BOUNDS["price_materially_below_ma20_pct"]:
+            avoid_reasons.append("Price is materially below the 20-day moving average.")
 
-    if ma20_above_ma50_pct >= 0:
-        contribution = min(0.16, 0.08 + (ma20_above_ma50_pct / 120))
-        score += contribution
+    if ma20_above_ma50_pct >= SWING_RULE_BOUNDS["ma20_meaningfully_above_ma50_pct"]:
+        score += SWING_SCORE_BONUSES["ma20_above_ma50"]
         passed_signals.append(
             f"The 20-day moving average is {ma20_above_ma50_pct:.1f}% above the 50-day moving average."
         )
+    elif ma20_above_ma50_pct >= 0:
+        score += SWING_SCORE_BONUSES["ma20_slightly_above_ma50"]
+        passed_signals.append("The 20-day moving average is slightly above the 50-day moving average.")
     else:
-        score -= 0.12
+        score -= SWING_SCORE_PENALTIES["ma20_below_ma50"]
         failed_signals.append("The 20-day moving average is not above the 50-day moving average.")
         penalties.append(f"The 20-day moving average is {abs(ma20_above_ma50_pct):.1f}% below the 50-day moving average.")
+        avoid_reasons.append("Short-term trend is below the 50-day trend.")
 
-    if 52 <= snapshot.rsi_14 <= 68:
+    if SWING_RULE_BOUNDS["rsi_preferred_min"] <= snapshot.rsi_14 <= SWING_RULE_BOUNDS["rsi_preferred_max"]:
         distance_from_center = abs(snapshot.rsi_14 - 60)
-        contribution = max(0.08, 0.16 - (distance_from_center * 0.01))
+        contribution = max(
+            SWING_SCORE_BONUSES["rsi_preferred_min"],
+            SWING_SCORE_BONUSES["rsi_preferred_max"] - (distance_from_center * 0.008),
+        )
         score += contribution
         passed_signals.append(f"RSI is {snapshot.rsi_14:.1f}, inside the preferred swing range.")
-    elif 45 <= snapshot.rsi_14 < 52:
-        score += 0.04
-        failed_signals.append("RSI is below the preferred 52-68 swing range.")
-        penalties.append(f"RSI is {snapshot.rsi_14:.1f}, constructive but not yet in the preferred range.")
-    elif 68 < snapshot.rsi_14 <= 75:
-        score -= 0.03 + min(0.07, (snapshot.rsi_14 - 68) * 0.01)
-        failed_signals.append("RSI is above the preferred 52-68 swing range.")
-        penalties.append(f"RSI is {snapshot.rsi_14:.1f}, which may be extended for a fresh entry.")
+        rsi_zone = "preferred"
+    elif SWING_RULE_BOUNDS["rsi_preferred_max"] < snapshot.rsi_14 <= SWING_RULE_BOUNDS["rsi_slightly_extended_max"]:
+        score -= SWING_SCORE_PENALTIES["rsi_slightly_extended"]
+        failed_signals.append("RSI is slightly extended above the preferred swing range.")
+        penalties.append(f"RSI is {snapshot.rsi_14:.1f}, so reward-to-risk may be less favorable.")
+        rsi_zone = "slightly_extended"
+    elif SWING_RULE_BOUNDS["rsi_slightly_extended_max"] < snapshot.rsi_14 <= SWING_RULE_BOUNDS["rsi_extended_max"]:
+        score -= SWING_SCORE_PENALTIES["rsi_extended"]
+        failed_signals.append("RSI is extended.")
+        penalties.append(f"RSI is {snapshot.rsi_14:.1f}, which is extended for a new swing entry.")
+        rsi_zone = "extended"
+    elif snapshot.rsi_14 > SWING_RULE_BOUNDS["rsi_extended_max"]:
+        score -= SWING_SCORE_PENALTIES["rsi_overheated"]
+        failed_signals.append("RSI is overheated.")
+        penalties.append(f"RSI is {snapshot.rsi_14:.1f}, an overheated reading for this swing model.")
+        avoid_reasons.append("RSI is overheated.")
+        rsi_zone = "overheated"
+    elif SWING_RULE_BOUNDS["rsi_soft_min"] <= snapshot.rsi_14 < SWING_RULE_BOUNDS["rsi_preferred_min"]:
+        score -= SWING_SCORE_PENALTIES["rsi_soft"]
+        failed_signals.append("RSI is below the preferred swing range.")
+        penalties.append(f"RSI is {snapshot.rsi_14:.1f}, which suggests momentum is not confirmed yet.")
+        rsi_zone = "soft"
     else:
-        score -= 0.16
+        score -= SWING_SCORE_PENALTIES["rsi_weak"]
         failed_signals.append("RSI is outside the acceptable swing range.")
         penalties.append(f"RSI is {snapshot.rsi_14:.1f}, outside the preferred swing range.")
+        avoid_reasons.append("RSI is too weak for the swing model.")
+        rsi_zone = "weak"
 
-    if volume_ratio >= 1.15:
-        score += min(0.12, 0.06 + ((volume_ratio - 1.15) * 0.08))
+    if volume_ratio >= SWING_RULE_BOUNDS["volume_confirmed_ratio"]:
+        score += min(
+            SWING_SCORE_BONUSES["volume_above_average_max"],
+            SWING_SCORE_BONUSES["volume_above_average_base"]
+            + ((volume_ratio - SWING_RULE_BOUNDS["volume_confirmed_ratio"]) * 0.04),
+        )
         passed_signals.append(f"Volume is {volume_ratio:.2f}x the 20-day average.")
-    elif volume_ratio >= 0.85:
-        score += max(0.0, (volume_ratio - 0.85) * 0.08)
+    elif volume_ratio >= SWING_RULE_BOUNDS["volume_near_confirmed_ratio"]:
+        score += SWING_SCORE_BONUSES["volume_near_confirmation"]
+        passed_signals.append(f"Volume is near confirmation at {volume_ratio:.2f}x the 20-day average.")
+    elif volume_ratio >= SWING_RULE_BOUNDS["volume_weak_ratio"]:
+        score -= SWING_SCORE_PENALTIES["volume_weak"]
         failed_signals.append("Volume is not meaningfully above the 20-day average.")
-        penalties.append(f"Volume confirmation is modest at {volume_ratio:.2f}x the 20-day average.")
+        penalties.append(f"Volume confirmation is weak at {volume_ratio:.2f}x the 20-day average.")
     else:
-        score -= 0.08
+        score -= SWING_SCORE_PENALTIES["volume_light"]
         failed_signals.append("Volume is below the 20-day average.")
         penalties.append(f"Volume is light at {volume_ratio:.2f}x the 20-day average.")
+        avoid_reasons.append("Volume is too light to confirm the setup.")
 
-    if snapshot.daily_change_pct >= 0:
-        score += min(0.06, snapshot.daily_change_pct * 0.015)
-        passed_signals.append(f"Daily change is positive at {snapshot.daily_change_pct:.2f}%.")
+    if (
+        SWING_RULE_BOUNDS["daily_change_constructive_min_pct"]
+        <= snapshot.daily_change_pct
+        <= SWING_RULE_BOUNDS["daily_change_constructive_max_pct"]
+    ):
+        score += SWING_SCORE_BONUSES["daily_change_constructive"]
+        passed_signals.append(f"Daily change is constructive at {snapshot.daily_change_pct:.2f}%.")
+    elif 0 <= snapshot.daily_change_pct < SWING_RULE_BOUNDS["daily_change_constructive_min_pct"]:
+        score += SWING_SCORE_BONUSES["daily_change_slightly_positive"]
+        passed_signals.append(f"Daily change is slightly positive at {snapshot.daily_change_pct:.2f}%.")
+    elif snapshot.daily_change_pct > SWING_RULE_BOUNDS["daily_change_constructive_max_pct"]:
+        score -= SWING_SCORE_PENALTIES["daily_change_stretched"]
+        failed_signals.append("Daily move is stretched.")
+        penalties.append(f"Daily change is +{snapshot.daily_change_pct:.2f}%, which may be chasing strength.")
     else:
-        score -= min(0.08, abs(snapshot.daily_change_pct) * 0.02)
+        score -= min(
+            SWING_SCORE_PENALTIES["daily_change_negative_max"],
+            SWING_SCORE_PENALTIES["daily_change_negative_base"]
+            + abs(snapshot.daily_change_pct) * 0.025,
+        )
         failed_signals.append("Daily change is negative.")
         penalties.append(f"Daily change is negative at {snapshot.daily_change_pct:.2f}%.")
 
-    if days_to_earnings is not None and 0 <= days_to_earnings <= 7:
-        score -= 0.12
+    if days_to_earnings is not None and 0 <= days_to_earnings <= SWING_RULE_BOUNDS["earnings_high_risk_days"]:
+        score -= SWING_SCORE_PENALTIES["earnings_within_7_days"]
         failed_signals.append("Earnings are inside the high-risk seven-day window.")
         penalties.append(f"Earnings are in {days_to_earnings} days, adding gap risk.")
-    elif days_to_earnings is not None and 8 <= days_to_earnings <= 14:
-        score -= 0.05
+        avoid_reasons.append("Earnings are too close for a clean swing setup.")
+    elif (
+        days_to_earnings is not None
+        and SWING_RULE_BOUNDS["earnings_high_risk_days"] < days_to_earnings <= SWING_RULE_BOUNDS["earnings_caution_days"]
+    ):
+        score -= SWING_SCORE_PENALTIES["earnings_within_14_days"]
         failed_signals.append("Earnings are close enough to affect swing risk.")
         penalties.append(f"Earnings are in {days_to_earnings} days, so position sizing needs extra care.")
     elif days_to_earnings is not None:
         passed_signals.append(f"Earnings are {days_to_earnings} days away.")
 
-    required = price_above_ma20_pct >= 0 and ma20_above_ma50_pct >= 0 and 48 <= snapshot.rsi_14 <= 75
-    score = min(max(round(score, 2), 0.05), 0.92)
+    required = (
+        price_above_ma20_pct >= 0
+        and ma20_above_ma50_pct >= 0
+        and SWING_RULE_BOUNDS["rsi_preferred_min"] <= snapshot.rsi_14 <= SWING_RULE_BOUNDS["rsi_slightly_extended_max"]
+        and len(avoid_reasons) == 0
+    )
+    score = min(max(round(score, 2), SWING_SCORE_LIMITS["min"]), SWING_SCORE_LIMITS["max"])
     return {
         "confidence": score,
         "passed_signals": passed_signals,
         "failed_signals": failed_signals,
         "penalties": penalties,
+        "avoid_reasons": avoid_reasons,
         "required": required,
         "days_to_earnings": days_to_earnings,
         "volume_ratio": volume_ratio,
         "price_above_ma20_pct": price_above_ma20_pct,
         "ma20_above_ma50_pct": ma20_above_ma50_pct,
+        "rsi_zone": rsi_zone,
         "final_score": score,
     }
 
@@ -134,9 +211,24 @@ def _join_rules(items: list[str], fallback: str) -> str:
 
 
 def _recommendation_action(evaluation: dict) -> RecommendationAction:
-    if evaluation["required"] and evaluation["confidence"] >= 0.52:
+    has_avoid_pressure = len(evaluation["avoid_reasons"]) > 0
+    has_too_many_penalties = len(evaluation["penalties"]) > SWING_RULE_BOUNDS["maximum_buy_penalties"]
+    enough_positive_signals = len(evaluation["passed_signals"]) >= SWING_RULE_BOUNDS["minimum_buy_signals"]
+
+    if evaluation["confidence"] <= SWING_SCORE_THRESHOLDS["avoid"]:
+        return RecommendationAction.AVOID
+    if (
+        evaluation["confidence"] >= SWING_SCORE_THRESHOLDS["buy"]
+        and evaluation["required"]
+        and enough_positive_signals
+        and not has_avoid_pressure
+        and not has_too_many_penalties
+    ):
         return RecommendationAction.BUY
-    if evaluation["confidence"] >= 0.35:
+    if (
+        SWING_SCORE_THRESHOLDS["watch"] <= evaluation["confidence"] < SWING_SCORE_THRESHOLDS["buy"]
+        and not has_avoid_pressure
+    ):
         return RecommendationAction.WATCH
     return RecommendationAction.AVOID
 
@@ -177,8 +269,6 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             .limit(1)
         )
         action = _recommendation_action(evaluation)
-        if existing_pending is None and action != RecommendationAction.BUY:
-            continue
 
         source_note = (
             "Provider-backed delayed market snapshot."
@@ -192,8 +282,15 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             "passed_signals": evaluation["passed_signals"],
             "failed_signals": evaluation["failed_signals"],
             "penalties": evaluation["penalties"],
+            "avoid_reasons": evaluation["avoid_reasons"],
             "final_score": evaluation["final_score"],
             "required_rules_passed": evaluation["required"],
+            "rsi_zone": evaluation["rsi_zone"],
+            "score_thresholds": {
+                "buy": SWING_SCORE_THRESHOLDS["buy"],
+                "watch": SWING_SCORE_THRESHOLDS["watch"],
+                "avoid": SWING_SCORE_THRESHOLDS["avoid"],
+            },
             "metrics": {
                 "price_above_ma20_pct": round(evaluation["price_above_ma20_pct"], 2),
                 "ma20_above_ma50_pct": round(evaluation["ma20_above_ma50_pct"], 2),
@@ -265,11 +362,13 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
                 "passed_signals": evaluation["passed_signals"],
                 "failed_signals": evaluation["failed_signals"],
                 "penalties": evaluation["penalties"],
+                "avoid_reasons": evaluation["avoid_reasons"],
                 "final_score": evaluation["final_score"],
                 "rule_metrics": {
                     "price_above_ma20_pct": round(evaluation["price_above_ma20_pct"], 2),
                     "ma20_above_ma50_pct": round(evaluation["ma20_above_ma50_pct"], 2),
                     "volume_ratio": round(evaluation["volume_ratio"], 2),
+                    "rsi_zone": evaluation["rsi_zone"],
                     "days_to_earnings": days_to_earnings,
                 },
                 "compliance_status": recommendation.compliance_status.value,
