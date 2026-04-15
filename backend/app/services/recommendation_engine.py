@@ -1,5 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,6 +45,7 @@ def _evaluate_swing_rules(snapshot, price: Decimal) -> dict:
     price_above_ma20_pct = _pct_distance(price, snapshot.moving_average_20)
     ma20_above_ma50_pct = _pct_distance(snapshot.moving_average_20, snapshot.ma50)
     volume_ratio = snapshot.volume / snapshot.avg_volume_20d if snapshot.avg_volume_20d else 0.0
+    constructive_trend = price_above_ma20_pct >= 0 and ma20_above_ma50_pct >= 0
 
     passed_signals: list[str] = []
     failed_signals: list[str] = []
@@ -111,7 +113,8 @@ def _evaluate_swing_rules(snapshot, price: Decimal) -> dict:
         score -= SWING_SCORE_PENALTIES["rsi_overheated"]
         failed_signals.append("RSI is overheated.")
         penalties.append(f"RSI is {snapshot.rsi_14:.1f}, an overheated reading for this swing model.")
-        avoid_reasons.append("RSI is overheated.")
+        if not constructive_trend or snapshot.rsi_14 >= SWING_RULE_BOUNDS["rsi_auto_avoid_min"]:
+            avoid_reasons.append("RSI is overheated.")
         rsi_zone = "overheated"
     elif SWING_RULE_BOUNDS["rsi_soft_min"] <= snapshot.rsi_14 < SWING_RULE_BOUNDS["rsi_preferred_min"]:
         score -= SWING_SCORE_PENALTIES["rsi_soft"]
@@ -184,8 +187,7 @@ def _evaluate_swing_rules(snapshot, price: Decimal) -> dict:
         passed_signals.append(f"Earnings are {days_to_earnings} days away.")
 
     required = (
-        price_above_ma20_pct >= 0
-        and ma20_above_ma50_pct >= 0
+        constructive_trend
         and SWING_RULE_BOUNDS["rsi_preferred_min"] <= snapshot.rsi_14 <= SWING_RULE_BOUNDS["rsi_slightly_extended_max"]
         and len(avoid_reasons) == 0
     )
@@ -239,6 +241,109 @@ def _recommendation_title(symbol: str, action: RecommendationAction) -> str:
     if action == RecommendationAction.WATCH:
         return f"{symbol} swing watch"
     return f"{symbol} swing risk review"
+
+
+def swing_calibration_examples() -> list[dict]:
+    examples = [
+        {
+            "setup_type": "mild_constructive",
+            "description": "Constructive trend, preferred RSI, confirmed volume.",
+            "price": Decimal("104"),
+            "snapshot": SimpleNamespace(
+                moving_average_20=Decimal("100"),
+                ma50=Decimal("96"),
+                rsi_14=58.0,
+                volume=1_450_000,
+                avg_volume_20d=1_000_000,
+                daily_change_pct=1.2,
+                earnings_date=date.today() + timedelta(days=35),
+            ),
+        },
+        {
+            "setup_type": "mixed_constructive",
+            "description": "Trend is positive, but volume is only modest and RSI is slightly extended.",
+            "price": Decimal("104"),
+            "snapshot": SimpleNamespace(
+                moving_average_20=Decimal("100"),
+                ma50=Decimal("96"),
+                rsi_14=67.0,
+                volume=820_000,
+                avg_volume_20d=1_000_000,
+                daily_change_pct=1.2,
+                earnings_date=date.today() + timedelta(days=35),
+            ),
+        },
+        {
+            "setup_type": "extended_constructive",
+            "description": "Trend is positive, but RSI is extended and volume is below average.",
+            "price": Decimal("104"),
+            "snapshot": SimpleNamespace(
+                moving_average_20=Decimal("100"),
+                ma50=Decimal("96"),
+                rsi_14=72.0,
+                volume=820_000,
+                avg_volume_20d=1_000_000,
+                daily_change_pct=1.2,
+                earnings_date=date.today() + timedelta(days=35),
+            ),
+        },
+        {
+            "setup_type": "overheated_constructive",
+            "description": "Trend is positive, but RSI is overheated enough to trigger avoid.",
+            "price": Decimal("104"),
+            "snapshot": SimpleNamespace(
+                moving_average_20=Decimal("100"),
+                ma50=Decimal("96"),
+                rsi_14=82.0,
+                volume=820_000,
+                avg_volume_20d=1_000_000,
+                daily_change_pct=1.2,
+                earnings_date=date.today() + timedelta(days=35),
+            ),
+        },
+        {
+            "setup_type": "weak_structure",
+            "description": "Price is below MA20, MA20 is below MA50, and earnings are close.",
+            "price": Decimal("96"),
+            "snapshot": SimpleNamespace(
+                moving_average_20=Decimal("100"),
+                ma50=Decimal("104"),
+                rsi_14=43.0,
+                volume=650_000,
+                avg_volume_20d=1_000_000,
+                daily_change_pct=-1.4,
+                earnings_date=date.today() + timedelta(days=5),
+            ),
+        },
+    ]
+
+    results = []
+    for example in examples:
+        snapshot = example["snapshot"]
+        price = example["price"]
+        evaluation = _evaluate_swing_rules(snapshot, price)
+        action = _recommendation_action(evaluation)
+        results.append(
+            {
+                "setup_type": example["setup_type"],
+                "description": example["description"],
+                "inputs": {
+                    "price_vs_ma20_pct": round(evaluation["price_above_ma20_pct"], 2),
+                    "ma20_vs_ma50_pct": round(evaluation["ma20_above_ma50_pct"], 2),
+                    "rsi_14": snapshot.rsi_14,
+                    "rsi_zone": evaluation["rsi_zone"],
+                    "volume_ratio": round(evaluation["volume_ratio"], 2),
+                    "daily_change_pct": snapshot.daily_change_pct,
+                    "days_to_earnings": evaluation["days_to_earnings"],
+                },
+                "recommendation_action": action.value,
+                "final_score": evaluation["final_score"],
+                "passed_signals": evaluation["passed_signals"],
+                "penalties": evaluation["penalties"],
+                "avoid_reasons": evaluation["avoid_reasons"],
+            }
+        )
+    return results
 
 
 def generate_swing_recommendations(db: Session) -> list[Recommendation]:
