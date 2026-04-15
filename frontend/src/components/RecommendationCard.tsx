@@ -46,10 +46,7 @@ function getSnapshotRows(snapshot: Record<string, unknown> | null): Array<[strin
     ["Daily change", formatChange(snapshot.daily_change_pct)],
     ["Volume", formatCompactNumber(snapshot.volume)],
     ["RSI 14", typeof snapshot.rsi_14 === "number" ? snapshot.rsi_14.toFixed(1) : "n/a"],
-    ["Earnings", formatDate(snapshot.earnings_date)],
-    ["Source", typeof snapshot.provider === "string" ? snapshot.provider : "n/a"],
-    ["Source type", typeof snapshot.source_type === "string" ? snapshot.source_type : "n/a"],
-    ["Refreshed", formatDateTime(snapshot.refreshed_at)]
+    ["Earnings", formatDate(snapshot.earnings_date)]
   ];
 }
 
@@ -58,10 +55,30 @@ function getDelayNote(snapshot: Record<string, unknown> | null): string | null {
   return snapshot.delay_note;
 }
 
+function getSourceLabel(snapshot: Record<string, unknown> | null): string {
+  if (!snapshot) return "Market data";
+  if (snapshot.provider === "seed-data" || snapshot.source_type === "seeded") return "Seeded demo data";
+  if (snapshot.provider === "yahoo") return "Yahoo-backed market data";
+  return "Provider-backed market data";
+}
+
+function getFreshnessLabel(snapshot: Record<string, unknown> | null): string {
+  if (!snapshot) return "Refresh status unavailable";
+  if (snapshot.source_type === "provider_delayed") return "May be delayed";
+  if (snapshot.source_type === "seeded") return "Demo values";
+  return "Research mode";
+}
+
+function getRefreshedLabel(snapshot: Record<string, unknown> | null): string | null {
+  if (!snapshot || typeof snapshot.refreshed_at !== "string") return null;
+  return `Last refreshed ${formatDateTime(snapshot.refreshed_at)}`;
+}
+
 export function RecommendationCard({ recommendation, busy = false, compact = false, onDecision }: RecommendationCardProps) {
   const canDecide = recommendation.decision_status === "pending" && onDecision;
   const snapshotRows = getSnapshotRows(recommendation.market_snapshot);
   const delayNote = getDelayNote(recommendation.market_snapshot);
+  const refreshedLabel = getRefreshedLabel(recommendation.market_snapshot);
 
   return (
     <article className={`recommendation-card ${compact ? "compact-card" : ""}`}>
@@ -92,7 +109,7 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
           <strong>{labelCompliance(recommendation.compliance_status)}</strong>
         </div>
         <div>
-          <span>Latest price</span>
+          <span>Snapshot price</span>
           <strong>{formatCurrency(recommendation.latest_price ?? recommendation.mock_price)}</strong>
         </div>
       </div>
@@ -109,7 +126,13 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
 
       {!compact && snapshotRows.length > 0 ? (
         <section className="market-context">
-          <h4>Market context</h4>
+          <div className="market-context-heading">
+            <h4>Market context</h4>
+            <div className="source-badges">
+              <span>{getSourceLabel(recommendation.market_snapshot)}</span>
+              <span>{getFreshnessLabel(recommendation.market_snapshot)}</span>
+            </div>
+          </div>
           <div className="snapshot-grid">
             {snapshotRows.map(([key, value]) => (
               <div key={key}>
@@ -118,6 +141,7 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
               </div>
             ))}
           </div>
+          {refreshedLabel ? <p className="source-note">{refreshedLabel}</p> : null}
           {delayNote ? <p className="source-note">{delayNote}</p> : null}
         </section>
       ) : null}

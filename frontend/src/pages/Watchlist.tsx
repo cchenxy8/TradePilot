@@ -28,6 +28,20 @@ function formatDateTime(value: string): string {
   return new Date(value).toLocaleString();
 }
 
+function getSnapshotSourceLabel(snapshot: MarketSnapshot): string {
+  if (snapshot.data_source_type === "seeded" || snapshot.data_provider === "seed-data") {
+    return "Seeded demo data";
+  }
+  if (snapshot.data_provider === "yahoo") return "Yahoo-backed market data";
+  return "Provider-backed market data";
+}
+
+function getSnapshotFreshnessLabel(snapshot: MarketSnapshot): string {
+  if (snapshot.data_source_type === "provider_delayed") return "May be delayed";
+  if (snapshot.data_source_type === "seeded") return "Demo values";
+  return "Research mode";
+}
+
 export function Watchlist() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -197,7 +211,13 @@ export function Watchlist() {
               </div>
               {latestSnapshot ? (
                 <section className="linked-recommendation">
-                  <h4>Market snapshot</h4>
+                  <div className="market-context-heading">
+                    <h4>Market snapshot</h4>
+                    <div className="source-badges">
+                      <span>{getSnapshotSourceLabel(latestSnapshot)}</span>
+                      <span>{getSnapshotFreshnessLabel(latestSnapshot)}</span>
+                    </div>
+                  </div>
                   <div className="market-mini-grid">
                     <span>Price {formatCurrency(latestSnapshot.latest_price ?? latestSnapshot.mock_price)}</span>
                     <span>Change {formatPercent(latestSnapshot.daily_change_pct)}</span>

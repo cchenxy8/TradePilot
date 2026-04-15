@@ -363,11 +363,42 @@ main {
 
 .market-context {
   border-top: 1px solid #dce4df;
+  display: grid;
+  gap: 0.85rem;
   padding-top: 1rem;
+  width: 100%;
+}
+
+.market-context-heading {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.source-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-start;
+}
+
+.source-badges span {
+  background: #e7f0eb;
+  border-radius: 999px;
+  color: #0f6b56;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 0.28rem 0.55rem;
 }
 
 .snapshot-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.snapshot-grid strong,
+.market-mini-grid span {
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .status-pill {
@@ -793,6 +824,7 @@ label {
   .page-header,
   .section-heading,
   .card-heading,
+  .market-context-heading,
   .journal-entry-header {
     align-items: stretch;
     flex-direction: column;
