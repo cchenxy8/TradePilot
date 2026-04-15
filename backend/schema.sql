@@ -61,6 +61,7 @@ CREATE TABLE recommendations (
     latest_price NUMERIC(12, 2),
     mock_price NUMERIC(12, 2),
     market_snapshot JSONB,
+    rule_results JSONB,
     generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     decided_at TIMESTAMPTZ,
     decision_reason TEXT,

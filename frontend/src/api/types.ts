@@ -35,6 +35,14 @@ export interface Recommendation {
   latest_price: number | null;
   mock_price: number | null;
   market_snapshot: Record<string, unknown> | null;
+  rule_results: {
+    passed_signals: string[];
+    failed_signals: string[];
+    penalties: string[];
+    final_score: number;
+    required_rules_passed: boolean;
+    metrics: Record<string, number | null>;
+  } | null;
   generated_at: string;
   decided_at: string | null;
   decision_reason: string | null;

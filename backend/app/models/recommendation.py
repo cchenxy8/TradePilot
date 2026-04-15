@@ -57,6 +57,7 @@ class Recommendation(TimestampMixin, Base):
         nullable=True,
     )
     market_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    rule_results: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(nullable=True)
     decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

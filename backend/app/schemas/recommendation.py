@@ -46,6 +46,7 @@ class RecommendationRead(TimestampedRead):
     latest_price: float | None
     mock_price: float | None
     market_snapshot: dict | None
+    rule_results: dict | None
     generated_at: datetime
     decided_at: datetime | None
     decision_reason: str | None

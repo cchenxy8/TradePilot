@@ -35,6 +35,9 @@ def create_db_and_tables() -> None:
             text("ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS latest_price NUMERIC(12, 2)")
         )
         connection.execute(
+            text("ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS rule_results JSON")
+        )
+        connection.execute(
             text("UPDATE market_snapshots SET latest_price = mock_price WHERE latest_price IS NULL AND mock_price IS NOT NULL")
         )
         connection.execute(
