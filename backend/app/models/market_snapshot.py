@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, JSON, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, JSON, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base, TimestampMixin
@@ -26,7 +26,17 @@ class MarketSnapshot(TimestampMixin, Base):
     rsi_14: Mapped[float] = mapped_column(nullable=False)
     earnings_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     news_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    data_provider: Mapped[str] = mapped_column(String(50), default="unknown", nullable=False)
+    data_source_type: Mapped[str] = mapped_column(String(30), default="unknown", nullable=False)
+    data_delay_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_sources: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     snapshot_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    refreshed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
     captured_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,

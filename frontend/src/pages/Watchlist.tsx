@@ -24,6 +24,10 @@ function formatCompactNumber(value: number): string {
   }).format(value);
 }
 
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString();
+}
+
 export function Watchlist() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -74,13 +78,20 @@ export function Watchlist() {
     }
     return map;
   }, [recommendations]);
+  const snapshotsByWatchlistId = useMemo(() => {
+    const map = new Map<number, MarketSnapshot>();
+    for (const snapshot of marketSnapshots) {
+      if (snapshot.watchlist_item_id !== null && !map.has(snapshot.watchlist_item_id)) {
+        map.set(snapshot.watchlist_item_id, snapshot);
+      }
+    }
+    return map;
+  }, [marketSnapshots]);
   const snapshotsBySymbol = useMemo(() => {
     const map = new Map<string, MarketSnapshot>();
     for (const snapshot of marketSnapshots) {
       const key = snapshot.symbol.toUpperCase();
-      if (!map.has(key)) {
-        map.set(key, snapshot);
-      }
+      if (!map.has(key)) map.set(key, snapshot);
     }
     return map;
   }, [marketSnapshots]);
@@ -93,7 +104,7 @@ export function Watchlist() {
   }
 
   function getLatestSnapshot(item: WatchlistItem): MarketSnapshot | undefined {
-    return snapshotsBySymbol.get(item.symbol.toUpperCase());
+    return snapshotsByWatchlistId.get(item.id) ?? snapshotsBySymbol.get(item.symbol.toUpperCase());
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -192,7 +203,11 @@ export function Watchlist() {
                     <span>Change {formatPercent(latestSnapshot.daily_change_pct)}</span>
                     <span>Volume {formatCompactNumber(latestSnapshot.volume)}</span>
                     <span>Earnings {latestSnapshot.earnings_date ? new Date(latestSnapshot.earnings_date).toLocaleDateString() : "n/a"}</span>
+                    <span>Source {latestSnapshot.data_provider}</span>
+                    <span>Type {latestSnapshot.data_source_type}</span>
+                    <span>Refreshed {formatDateTime(latestSnapshot.refreshed_at)}</span>
                   </div>
+                  {latestSnapshot.data_delay_note ? <small>{latestSnapshot.data_delay_note}</small> : null}
                 </section>
               ) : null}
               {linkedRecommendation ? (

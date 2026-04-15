@@ -93,7 +93,13 @@ export interface MarketSnapshot {
   rsi_14: number;
   earnings_date: string | null;
   news_summary: string | null;
+  data_provider: string;
+  data_source_type: string;
+  data_delay_note: string | null;
+  field_sources: Record<string, string> | null;
+  is_current: boolean;
   snapshot_payload: Record<string, unknown> | null;
+  refreshed_at: string;
   captured_at: string;
   created_at: string;
   updated_at: string;

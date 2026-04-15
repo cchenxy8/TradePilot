@@ -696,6 +696,12 @@ label {
   line-height: 1.4;
 }
 
+.source-note {
+  color: #66736e;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 .market-mini-grid {
   display: grid;
   gap: 0.45rem;

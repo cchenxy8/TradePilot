@@ -35,19 +35,33 @@ function formatDate(value: unknown): string {
   return new Date(value).toLocaleDateString();
 }
 
+function formatDateTime(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0) return "n/a";
+  return new Date(value).toLocaleString();
+}
+
 function getSnapshotRows(snapshot: Record<string, unknown> | null): Array<[string, string]> {
   if (!snapshot) return [];
   return [
     ["Daily change", formatChange(snapshot.daily_change_pct)],
     ["Volume", formatCompactNumber(snapshot.volume)],
     ["RSI 14", typeof snapshot.rsi_14 === "number" ? snapshot.rsi_14.toFixed(1) : "n/a"],
-    ["Earnings", formatDate(snapshot.earnings_date)]
+    ["Earnings", formatDate(snapshot.earnings_date)],
+    ["Source", typeof snapshot.provider === "string" ? snapshot.provider : "n/a"],
+    ["Source type", typeof snapshot.source_type === "string" ? snapshot.source_type : "n/a"],
+    ["Refreshed", formatDateTime(snapshot.refreshed_at)]
   ];
+}
+
+function getDelayNote(snapshot: Record<string, unknown> | null): string | null {
+  if (!snapshot || typeof snapshot.delay_note !== "string") return null;
+  return snapshot.delay_note;
 }
 
 export function RecommendationCard({ recommendation, busy = false, compact = false, onDecision }: RecommendationCardProps) {
   const canDecide = recommendation.decision_status === "pending" && onDecision;
   const snapshotRows = getSnapshotRows(recommendation.market_snapshot);
+  const delayNote = getDelayNote(recommendation.market_snapshot);
 
   return (
     <article className={`recommendation-card ${compact ? "compact-card" : ""}`}>
@@ -104,6 +118,7 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
               </div>
             ))}
           </div>
+          {delayNote ? <p className="source-note">{delayNote}</p> : null}
         </section>
       ) : null}
 

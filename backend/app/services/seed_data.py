@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -197,6 +197,7 @@ def seed_demo_data(db: Session) -> dict[str, int]:
         watchlist_items.append(watchlist_item)
 
         earnings_date = date.today() + timedelta(days=asset["earnings_offset_days"])
+        refreshed_at = datetime.now(timezone.utc)
         snapshot_payload = {
             "symbol": asset["symbol"],
             "latest_price": float(asset["latest_price"]),
@@ -209,7 +210,27 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             "earnings_date": earnings_date.isoformat(),
             "news_summary": asset["news_summary"],
             "provider": "seed-data",
+            "source_type": "seeded",
+            "delay_note": "Seeded demo value, not provider-backed.",
+            "field_sources": {
+                "latest_price": "seed_data",
+                "daily_change_pct": "seed_data",
+                "volume": "seed_data",
+                "earnings_date": "seed_data",
+                "avg_volume_20d": "seed_data",
+                "moving_average_20": "seed_data",
+                "ma50": "seed_data",
+                "rsi_14": "seed_data",
+            },
+            "refreshed_at": refreshed_at.isoformat(),
         }
+        for existing_snapshot in db.scalars(
+            select(MarketSnapshot).where(
+                MarketSnapshot.symbol == asset["symbol"],
+                MarketSnapshot.is_current.is_(True),
+            )
+        ):
+            existing_snapshot.is_current = False
         snapshot = MarketSnapshot(
             symbol=asset["symbol"],
             watchlist_item_id=watchlist_item.id,
@@ -223,6 +244,13 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             rsi_14=asset["rsi_14"],
             earnings_date=earnings_date,
             news_summary=asset["news_summary"],
+            data_provider="seed-data",
+            data_source_type="seeded",
+            data_delay_note="Seeded demo value, not provider-backed.",
+            field_sources=snapshot_payload["field_sources"],
+            is_current=True,
+            refreshed_at=refreshed_at,
+            captured_at=refreshed_at,
             snapshot_payload=snapshot_payload,
         )
         db.add(snapshot)

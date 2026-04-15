@@ -17,5 +17,11 @@ class MarketSnapshotRead(TimestampedRead):
     rsi_14: float
     earnings_date: date | None
     news_summary: str | None
+    data_provider: str
+    data_source_type: str
+    data_delay_note: str | None
+    field_sources: dict | None
+    is_current: bool
     snapshot_payload: dict | None
+    refreshed_at: datetime
     captured_at: datetime

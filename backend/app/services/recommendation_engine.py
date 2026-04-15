@@ -14,9 +14,8 @@ from backend.app.models.recommendation import Recommendation
 from backend.app.models.watchlist import WatchlistItem
 from backend.app.services.audit import log_event
 from backend.app.services.market_data import (
-    MarketDataError,
-    create_market_snapshot_for_item,
-    get_latest_snapshot_for_item,
+    get_active_snapshot_with_refresh_attempt,
+    is_provider_backed,
     snapshot_price,
 )
 
@@ -32,12 +31,9 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
 
     created: list[Recommendation] = []
     for item in watchlist_items:
-        snapshot = get_latest_snapshot_for_item(db, item)
+        snapshot = get_active_snapshot_with_refresh_attempt(db, item)
         if snapshot is None:
-            try:
-                snapshot = create_market_snapshot_for_item(db, item)
-            except MarketDataError:
-                continue
+            continue
 
         price = snapshot_price(snapshot)
         above_ma = price > snapshot.moving_average_20
@@ -72,15 +68,26 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
             symbol=item.symbol,
             bucket=item.bucket,
             title=f"{item.symbol} swing candidate",
-            rationale=item.thesis or "Swing candidate identified from watchlist and real market data.",
+            rationale=item.thesis or (
+                "Swing candidate identified from watchlist and provider-backed market data."
+                if is_provider_backed(snapshot)
+                else "Swing candidate identified from watchlist and seeded fallback market data."
+            ),
             recommendation_action=RecommendationAction.BUY,
             setup_type=SetupType.SWING_ADD if earnings_near else SetupType.SWING_ENTRY,
             why_now=(
                 f"Latest price is above the 20-day moving average with RSI at {snapshot.rsi_14:.1f} "
-                f"and daily change at {snapshot.daily_change_pct:.2f}%."
+                f"and daily change at {snapshot.daily_change_pct:.2f}%. "
+                f"Active snapshot source is {snapshot.data_source_type} from {snapshot.data_provider}, "
+                f"refreshed at {snapshot.refreshed_at.isoformat()}."
             ),
             risk_notes=(
                 "No automation is enabled. Manual review is required before any trade, especially if earnings are near."
+                + (
+                    " This recommendation is using seeded fallback data because no provider-backed snapshot is available."
+                    if not is_provider_backed(snapshot)
+                    else ""
+                )
             ),
             confidence_score=min(confidence, 0.96),
             compliance_status=ComplianceStatus.NEEDS_REVIEW,
@@ -104,6 +111,11 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
                 "setup_type": recommendation.setup_type.value,
                 "confidence_score": recommendation.confidence_score,
                 "compliance_status": recommendation.compliance_status.value,
+                "market_snapshot_id": snapshot.id,
+                "data_provider": snapshot.data_provider,
+                "data_source_type": snapshot.data_source_type,
+                "refreshed_at": snapshot.refreshed_at.isoformat(),
+                "is_provider_backed": is_provider_backed(snapshot),
                 "engine": "swing_rule_engine",
             },
         )

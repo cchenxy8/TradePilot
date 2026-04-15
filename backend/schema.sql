@@ -30,7 +30,13 @@ CREATE TABLE market_snapshots (
     rsi_14 DOUBLE PRECISION NOT NULL,
     earnings_date DATE,
     news_summary TEXT,
+    data_provider VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    data_source_type VARCHAR(30) NOT NULL DEFAULT 'unknown',
+    data_delay_note TEXT,
+    field_sources JSONB,
+    is_current BOOLEAN NOT NULL DEFAULT TRUE,
     snapshot_payload JSONB,
+    refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
