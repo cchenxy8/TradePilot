@@ -37,6 +37,11 @@ class PortfolioPositionRead(TimestampedRead):
     thesis: str | None
     notes: str | None
     recommended_action: PositionAction
+    assessment_rationale: str | None = None
+    assessment_summary: str | None = None
+    pnl_pct: float | None = None
+    market_snapshot: dict | None = None
+    read_only_note: str = "Read-only position analysis. TradePilot does not place orders."
 
 
 class PositionCsvImportRequest(BaseModel):
@@ -44,12 +49,33 @@ class PositionCsvImportRequest(BaseModel):
     account_id: str | None = None
     source_type: PositionSourceType = PositionSourceType.CSV_IMPORT
     last_synced_at: datetime | None = None
+    column_mapping: dict[str, str | None] | None = None
 
 
 class PositionCsvImportResult(BaseModel):
     imported_count: int
     skipped_count: int
     positions: list[PortfolioPositionRead]
+    errors: list[str]
+
+
+class PositionCsvPreviewRequest(BaseModel):
+    csv_text: str
+    column_mapping: dict[str, str | None] | None = None
+
+
+class PositionCsvPreviewRow(BaseModel):
+    row_number: int
+    values: dict[str, str | float | None]
+    errors: list[str]
+
+
+class PositionCsvPreviewResult(BaseModel):
+    headers: list[str]
+    suggested_mapping: dict[str, str | None]
+    rows: list[PositionCsvPreviewRow]
+    valid_count: int
+    error_count: int
     errors: list[str]
 
 

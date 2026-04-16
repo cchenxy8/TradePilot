@@ -8,6 +8,8 @@ import type {
   PortfolioPositionCreate,
   PositionCsvImportRequest,
   PositionCsvImportResult,
+  PositionCsvPreviewRequest,
+  PositionCsvPreviewResult,
   Recommendation,
   RecommendationDecisionRequest,
   RecommendationDecisionStatus,
@@ -124,6 +126,13 @@ export function createPortfolioPosition(payload: PortfolioPositionCreate): Promi
 
 export function importPortfolioPositionsCsv(payload: PositionCsvImportRequest): Promise<PositionCsvImportResult> {
   return request<PositionCsvImportResult>("/portfolio/positions/import-csv", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function previewPortfolioPositionsCsv(payload: PositionCsvPreviewRequest): Promise<PositionCsvPreviewResult> {
+  return request<PositionCsvPreviewResult>("/portfolio/positions/import-csv/preview", {
     method: "POST",
     body: JSON.stringify(payload)
   });

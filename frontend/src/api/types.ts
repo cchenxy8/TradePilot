@@ -137,6 +137,23 @@ export interface PortfolioPosition {
   thesis: string | null;
   notes: string | null;
   recommended_action: PositionAction;
+  assessment_rationale: string | null;
+  assessment_summary: string | null;
+  pnl_pct: number | null;
+  market_snapshot: {
+    snapshot_price: number | null;
+    moving_average_20: number;
+    ma50: number;
+    trend_positive: boolean;
+    rsi_14: number;
+    volume_ratio: number | null;
+    daily_change_pct: number;
+    data_provider: string;
+    data_source_type: string;
+    refreshed_at: string;
+    holding_type?: "fund_or_index" | "individual_stock";
+  } | null;
+  read_only_note: string;
   created_at: string;
   updated_at: string;
 }
@@ -162,12 +179,33 @@ export interface PositionCsvImportRequest {
   account_id?: string | null;
   source_type?: PositionSourceType;
   last_synced_at?: string | null;
+  column_mapping?: Record<string, string | null>;
 }
 
 export interface PositionCsvImportResult {
   imported_count: number;
   skipped_count: number;
   positions: PortfolioPosition[];
+  errors: string[];
+}
+
+export interface PositionCsvPreviewRequest {
+  csv_text: string;
+  column_mapping?: Record<string, string | null>;
+}
+
+export interface PositionCsvPreviewRow {
+  row_number: number;
+  values: Record<string, string | number | null>;
+  errors: string[];
+}
+
+export interface PositionCsvPreviewResult {
+  headers: string[];
+  suggested_mapping: Record<string, string | null>;
+  rows: PositionCsvPreviewRow[];
+  valid_count: number;
+  error_count: number;
   errors: string[];
 }
 

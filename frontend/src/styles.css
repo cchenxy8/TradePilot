@@ -673,6 +673,42 @@ main {
   min-height: 110px;
 }
 
+.upload-panel {
+  background: #fbfcfa;
+  border: 1px dashed #b8c7c0;
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+
+.upload-panel span {
+  color: #66736e;
+  font-weight: 600;
+}
+
+.import-preview {
+  display: grid;
+  gap: 1rem;
+}
+
+.mapping-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.import-errors {
+  background: #f1dada;
+  border-radius: 8px;
+  color: #853737;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem;
+}
+
+.import-errors p {
+  margin: 0;
+}
+
 .position-grid {
   display: grid;
   gap: 1rem;
