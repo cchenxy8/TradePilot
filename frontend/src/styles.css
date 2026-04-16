@@ -885,6 +885,31 @@ label {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.action-summary {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.action-summary div {
+  background: #ffffff;
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+}
+
+.action-summary span {
+  color: #66736e;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.action-summary strong {
+  font-size: 1.25rem;
+}
+
 .decision-dashboard div,
 .section-panel,
 .watchlist-card,
@@ -1059,7 +1084,8 @@ label {
   .inline-form,
   .journal-form,
   .portfolio-form,
-  .position-grid {
+  .position-grid,
+  .action-summary {
     grid-template-columns: 1fr;
   }
 

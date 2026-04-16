@@ -86,7 +86,11 @@ export function Portfolio() {
       return sum + position.current_price * position.shares;
     }, 0);
     const unrealizedPnl = positions.reduce((sum, position) => sum + (position.unrealized_pnl ?? 0), 0);
-    return { marketValue, unrealizedPnl };
+    const actionCounts = positions.reduce<Record<string, number>>((counts, position) => {
+      counts[position.recommended_action] = (counts[position.recommended_action] ?? 0) + 1;
+      return counts;
+    }, {});
+    return { actionCounts, marketValue, unrealizedPnl };
   }, [positions]);
 
   async function handleManualSubmit(event: FormEvent) {
@@ -194,6 +198,15 @@ export function Portfolio() {
           <span>Known unrealized P/L</span>
           <strong>{formatCurrency(totals.unrealizedPnl)}</strong>
         </div>
+      </div>
+
+      <div className="action-summary">
+        {(["hold", "add", "trim", "exit", "review"] as const).map((action) => (
+          <div key={action}>
+            <span>{labelPositionAction(action)}</span>
+            <strong>{totals.actionCounts[action] ?? 0}</strong>
+          </div>
+        ))}
       </div>
 
       <section className="portfolio-layout">

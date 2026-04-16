@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from backend.app.models.enums import PositionAction
 from backend.app.models.market_snapshot import MarketSnapshot
 from backend.app.models.position import PortfolioPosition
+from backend.app.services.portfolio_assessment_config import PORTFOLIO_ASSESSMENT_THRESHOLDS
 
 BROAD_FUND_SYMBOLS = {
     "SPY",
@@ -95,6 +96,48 @@ def _decision_text(action: PositionAction, is_fund_like: bool) -> str:
     return "Review: do not change the holding until the missing or conflicting signals are checked."
 
 
+def _threshold(key: str) -> float:
+    return PORTFOLIO_ASSESSMENT_THRESHOLDS[key]
+
+
+def _position_flags(position: PortfolioPosition, pnl_pct: float | None, is_fund_like: bool) -> dict[str, bool]:
+    concentration_threshold = _threshold("fund_concentration_weight" if is_fund_like else "stock_concentration_weight")
+    large_gain_threshold = _threshold("fund_large_gain_pct" if is_fund_like else "stock_large_gain_pct")
+    exit_loss_threshold = _threshold("fund_exit_loss_pct" if is_fund_like else "stock_exit_loss_pct")
+    add_min_gain_threshold = _threshold("fund_add_min_gain_pct" if is_fund_like else "stock_add_min_gain_pct")
+    return {
+        "concentrated": position.portfolio_weight is not None and position.portfolio_weight >= concentration_threshold,
+        "large_gain": pnl_pct is not None and pnl_pct >= large_gain_threshold,
+        "loss_breakdown": pnl_pct is not None and pnl_pct <= exit_loss_threshold,
+        "add_eligible_pnl": pnl_pct is None or pnl_pct >= add_min_gain_threshold,
+    }
+
+
+def _trim_gain_threshold(is_fund_like: bool, hot_momentum: bool, light_volume: bool) -> float:
+    if hot_momentum and light_volume:
+        return _threshold(
+            "fund_trim_gain_with_hot_rsi_and_weak_volume_pct"
+            if is_fund_like
+            else "stock_trim_gain_with_hot_rsi_and_weak_volume_pct"
+        )
+    if hot_momentum:
+        return _threshold("fund_trim_gain_with_hot_rsi_pct" if is_fund_like else "stock_trim_gain_with_hot_rsi_pct")
+    return _threshold("fund_large_gain_pct" if is_fund_like else "stock_large_gain_pct")
+
+
+def _assess_without_snapshot(position: PortfolioPosition, pnl_pct: float | None, is_fund_like: bool) -> tuple[PositionAction, list[str]]:
+    flags = _position_flags(position, pnl_pct, is_fund_like)
+    if flags["concentrated"]:
+        return PositionAction.TRIM, ["Use Trim because portfolio weight is high even without a fresh market snapshot."]
+    if flags["loss_breakdown"]:
+        return PositionAction.EXIT, ["Use Exit because the position is materially below cost and no market snapshot offsets that risk."]
+    if flags["large_gain"]:
+        return PositionAction.TRIM, ["Use Trim because the position has a large gain and imported data is enough to review exposure."]
+    if flags["add_eligible_pnl"]:
+        return PositionAction.HOLD, ["Use Hold because imported price and cost data are available, but market signals are missing."]
+    return PositionAction.REVIEW, ["Use Review because imported data is too incomplete or conflicted for a clearer action."]
+
+
 def assess_position(db: Session, position: PortfolioPosition) -> dict:
     snapshot = _latest_symbol_snapshot(db, position.symbol)
     price = _position_price(position, snapshot)
@@ -136,27 +179,29 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
         action = PositionAction.REVIEW
         rationale_parts.append("Use Review because average cost is missing and P/L context is incomplete.")
     elif snapshot is None:
-        action = PositionAction.REVIEW
-        rationale_parts.append("Use Review because no market snapshot is available yet.")
+        action, rationale_parts = _assess_without_snapshot(position, pnl_pct, is_fund_like)
     else:
-        concentrated = position.portfolio_weight is not None and position.portfolio_weight >= (0.35 if is_fund_like else 0.2)
-        large_gain = pnl_pct is not None and pnl_pct >= (40 if is_fund_like else 25)
-        loss_breakdown = pnl_pct is not None and pnl_pct <= (-12 if is_fund_like else -8)
-        hot_momentum = snapshot.rsi_14 >= (82 if is_fund_like else 78)
-        elevated_momentum = snapshot.rsi_14 >= 65
-        light_volume = volume_ratio is not None and volume_ratio < 0.75
+        flags = _position_flags(position, pnl_pct, is_fund_like)
+        concentrated = flags["concentrated"]
+        loss_breakdown = flags["loss_breakdown"]
+        add_eligible_pnl = flags["add_eligible_pnl"]
+        hot_momentum = snapshot.rsi_14 >= _threshold("hot_rsi_fund" if is_fund_like else "hot_rsi_stock")
+        elevated_momentum = snapshot.rsi_14 >= _threshold("elevated_rsi")
+        light_volume = volume_ratio is not None and volume_ratio < _threshold("light_volume_ratio")
+        trim_gain_threshold = _trim_gain_threshold(is_fund_like, hot_momentum, light_volume)
+        trim_pressure = pnl_pct is not None and pnl_pct >= trim_gain_threshold and (hot_momentum or light_volume)
 
         if not trend_positive and loss_breakdown:
             action = PositionAction.EXIT
             rationale_parts.append("Use Exit because trend has weakened and the position is below cost.")
-        elif concentrated or (large_gain and hot_momentum):
+        elif concentrated or trim_pressure:
             action = PositionAction.TRIM
             rationale_parts.append(
                 "Use Trim because exposure or profit risk is elevated."
                 if concentrated
-                else "Use Trim because the gain is large and momentum is hot."
+                else "Use Trim because profit cushion, hot momentum, and/or weak volume are stacked."
             )
-        elif trend_positive and not elevated_momentum and not light_volume and not concentrated:
+        elif trend_positive and not elevated_momentum and not light_volume and not concentrated and add_eligible_pnl:
             action = PositionAction.ADD
             rationale_parts.append(
                 "Use Add because the broad holding is constructive and not concentrated."
@@ -167,8 +212,12 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
             action = PositionAction.HOLD
             rationale_parts.append("Use Hold because trend is constructive, but one or more conditions argue against adding.")
         else:
-            action = PositionAction.REVIEW
-            rationale_parts.append("Use Review because trend is not constructive enough for Add or Hold conviction.")
+            action = PositionAction.EXIT if loss_breakdown else PositionAction.HOLD
+            rationale_parts.append(
+                "Use Exit because losses and weak structure are aligned."
+                if action == PositionAction.EXIT
+                else "Use Hold because structure is not strong enough to add, but exit conditions are not met."
+            )
 
         if trend_positive:
             rationale_parts.append("Trend structure is constructive with price above MA20 and MA20 above MA50.")

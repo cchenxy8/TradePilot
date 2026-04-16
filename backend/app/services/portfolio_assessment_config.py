@@ -1,0 +1,18 @@
+PORTFOLIO_ASSESSMENT_THRESHOLDS = {
+    "stock_concentration_weight": 0.20,
+    "fund_concentration_weight": 0.35,
+    "stock_large_gain_pct": 25.0,
+    "fund_large_gain_pct": 40.0,
+    "stock_trim_gain_with_hot_rsi_pct": 28.0,
+    "stock_trim_gain_with_hot_rsi_and_weak_volume_pct": 18.0,
+    "fund_trim_gain_with_hot_rsi_pct": 45.0,
+    "fund_trim_gain_with_hot_rsi_and_weak_volume_pct": 30.0,
+    "stock_exit_loss_pct": -12.0,
+    "fund_exit_loss_pct": -18.0,
+    "stock_add_min_gain_pct": -5.0,
+    "fund_add_min_gain_pct": -10.0,
+    "hot_rsi_stock": 78.0,
+    "hot_rsi_fund": 82.0,
+    "elevated_rsi": 65.0,
+    "light_volume_ratio": 0.75,
+}
