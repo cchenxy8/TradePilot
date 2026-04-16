@@ -635,7 +635,8 @@ main {
 
 .filter-bar,
 .inline-form,
-.journal-form {
+.journal-form,
+.portfolio-form {
   align-items: end;
   display: grid;
   gap: 0.9rem;
@@ -649,7 +650,8 @@ main {
   grid-template-columns: minmax(120px, 160px) minmax(120px, 160px) 1fr auto;
 }
 
-.journal-form {
+.journal-form,
+.portfolio-form {
   background: #ffffff;
   border: 1px solid #dce4df;
   border-radius: 8px;
@@ -657,8 +659,55 @@ main {
   padding: 1.15rem;
 }
 
-.journal-form button {
+.journal-form button,
+.portfolio-form button {
   justify-self: start;
+}
+
+.portfolio-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.portfolio-form textarea {
+  min-height: 110px;
+}
+
+.position-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.position-card {
+  background: #ffffff;
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.position-card h3,
+.position-card p {
+  margin: 0;
+}
+
+.action-badge.hold,
+.action-badge.add {
+  background: #e7f0eb;
+  color: #0f6b56;
+}
+
+.action-badge.trim,
+.action-badge.review {
+  background: #e7e0cf;
+  color: #5b4916;
+}
+
+.action-badge.exit {
+  background: #f1dada;
+  color: #853737;
 }
 
 .journal-layout {
@@ -696,6 +745,10 @@ label {
 }
 
 .full-field {
+  grid-column: 1 / -1;
+}
+
+.full-span {
   grid-column: 1 / -1;
 }
 
@@ -968,7 +1021,9 @@ label {
   .watchlist-grid,
   .filter-bar,
   .inline-form,
-  .journal-form {
+  .journal-form,
+  .portfolio-form,
+  .position-grid {
     grid-template-columns: 1fr;
   }
 

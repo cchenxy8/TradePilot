@@ -1,6 +1,8 @@
 import type {
   BucketType,
   ComplianceStatus,
+  PositionAction,
+  PositionSourceType,
   RecommendationAction,
   RecommendationDecisionStatus,
   SetupType,
@@ -47,6 +49,20 @@ const watchlistStatusLabels: Record<WatchlistStatus, string> = {
   archived: "Archived"
 };
 
+const positionSourceLabels: Record<PositionSourceType, string> = {
+  manual_entry: "Manual entry",
+  csv_import: "CSV import",
+  broker_readonly: "Broker read-only"
+};
+
+const positionActionLabels: Record<PositionAction, string> = {
+  hold: "Hold",
+  add: "Add",
+  trim: "Trim",
+  exit: "Exit",
+  review: "Review"
+};
+
 export function labelBucket(value: BucketType): string {
   return bucketLabels[value];
 }
@@ -69,6 +85,14 @@ export function labelDecision(value: RecommendationDecisionStatus): string {
 
 export function labelWatchlistStatus(value: WatchlistStatus): string {
   return watchlistStatusLabels[value];
+}
+
+export function labelPositionSource(value: PositionSourceType): string {
+  return positionSourceLabels[value];
+}
+
+export function labelPositionAction(value: PositionAction): string {
+  return positionActionLabels[value];
 }
 
 export function labelFilter(value: string): string {

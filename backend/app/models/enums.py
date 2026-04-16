@@ -39,3 +39,17 @@ class WatchlistStatus(str, enum.Enum):
     CANDIDATE = "candidate"
     APPROVED = "approved"
     ARCHIVED = "archived"
+
+
+class PositionSourceType(str, enum.Enum):
+    MANUAL_ENTRY = "manual_entry"
+    CSV_IMPORT = "csv_import"
+    BROKER_READONLY = "broker_readonly"
+
+
+class PositionAction(str, enum.Enum):
+    HOLD = "hold"
+    ADD = "add"
+    TRIM = "trim"
+    EXIT = "exit"
+    REVIEW = "review"

@@ -146,7 +146,8 @@ def _evaluate_swing_rules(snapshot, price: Decimal) -> dict:
         score -= SWING_SCORE_PENALTIES["volume_light"]
         failed_signals.append("Volume is below the 20-day average.")
         penalties.append(f"Volume is light at {volume_ratio:.2f}x the 20-day average.")
-        avoid_reasons.append("Volume is too light to confirm the setup.")
+        if not constructive_trend or volume_ratio < SWING_RULE_BOUNDS["volume_extremely_weak_ratio"]:
+            avoid_reasons.append("Volume is too light to confirm the setup.")
 
     if (
         SWING_RULE_BOUNDS["daily_change_constructive_min_pct"]
@@ -204,6 +205,7 @@ def _evaluate_swing_rules(snapshot, price: Decimal) -> dict:
         "price_above_ma20_pct": price_above_ma20_pct,
         "ma20_above_ma50_pct": ma20_above_ma50_pct,
         "rsi_zone": rsi_zone,
+        "constructive_trend": constructive_trend,
         "final_score": score,
     }
 
@@ -231,6 +233,8 @@ def _recommendation_action(evaluation: dict) -> RecommendationAction:
         SWING_SCORE_THRESHOLDS["watch"] <= evaluation["confidence"] < SWING_SCORE_THRESHOLDS["buy"]
         and not has_avoid_pressure
     ):
+        return RecommendationAction.WATCH
+    if evaluation["constructive_trend"] and not has_avoid_pressure:
         return RecommendationAction.WATCH
     return RecommendationAction.AVOID
 
@@ -288,13 +292,27 @@ def swing_calibration_examples() -> list[dict]:
             ),
         },
         {
-            "setup_type": "overheated_constructive",
-            "description": "Trend is positive, but RSI is overheated enough to trigger avoid.",
+            "setup_type": "borderline_overheated_constructive",
+            "description": "Trend is positive, but RSI is between extended and clearly overheated.",
             "price": Decimal("104"),
             "snapshot": SimpleNamespace(
                 moving_average_20=Decimal("100"),
                 ma50=Decimal("96"),
                 rsi_14=82.0,
+                volume=820_000,
+                avg_volume_20d=1_000_000,
+                daily_change_pct=1.2,
+                earnings_date=date.today() + timedelta(days=35),
+            ),
+        },
+        {
+            "setup_type": "clearly_overheated_constructive",
+            "description": "Trend is positive, but RSI is clearly overheated enough to avoid.",
+            "price": Decimal("104"),
+            "snapshot": SimpleNamespace(
+                moving_average_20=Decimal("100"),
+                ma50=Decimal("96"),
+                rsi_14=88.0,
                 volume=820_000,
                 avg_volume_20d=1_000_000,
                 daily_change_pct=1.2,

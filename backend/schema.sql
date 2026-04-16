@@ -4,6 +4,8 @@ CREATE TYPE recommendation_action AS ENUM ('buy', 'sell', 'watch', 'avoid');
 CREATE TYPE setup_type AS ENUM ('long_term_watch', 'swing_entry', 'swing_add', 'event_setup');
 CREATE TYPE compliance_status AS ENUM ('allowed', 'needs_review', 'blocked');
 CREATE TYPE watchlist_status AS ENUM ('watching', 'candidate', 'approved', 'archived');
+CREATE TYPE position_source_type AS ENUM ('manual_entry', 'csv_import', 'broker_readonly');
+CREATE TYPE position_action AS ENUM ('hold', 'add', 'trim', 'exit', 'review');
 
 CREATE TABLE watchlist_items (
     id BIGSERIAL PRIMARY KEY,
@@ -85,6 +87,25 @@ CREATE TABLE journal_entries (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE portfolio_positions (
+    id BIGSERIAL PRIMARY KEY,
+    account_id VARCHAR(100),
+    source_type position_source_type NOT NULL DEFAULT 'manual_entry',
+    external_position_id VARCHAR(120),
+    last_synced_at TIMESTAMPTZ,
+    symbol VARCHAR(16) NOT NULL,
+    shares NUMERIC(18, 6) NOT NULL,
+    average_cost NUMERIC(12, 2),
+    current_price NUMERIC(12, 2),
+    unrealized_pnl NUMERIC(14, 2),
+    portfolio_weight DOUBLE PRECISION,
+    thesis TEXT,
+    notes TEXT,
+    recommended_action position_action NOT NULL DEFAULT 'review',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE audit_logs (
     id BIGSERIAL PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
@@ -105,4 +126,9 @@ CREATE INDEX ix_recommendations_recommendation_action ON recommendations(recomme
 CREATE INDEX ix_recommendations_setup_type ON recommendations(setup_type);
 CREATE INDEX ix_journal_entries_symbol ON journal_entries(symbol);
 CREATE INDEX ix_journal_entries_bucket ON journal_entries(bucket);
+CREATE INDEX ix_portfolio_positions_account_id ON portfolio_positions(account_id);
+CREATE INDEX ix_portfolio_positions_source_type ON portfolio_positions(source_type);
+CREATE INDEX ix_portfolio_positions_external_position_id ON portfolio_positions(external_position_id);
+CREATE INDEX ix_portfolio_positions_symbol ON portfolio_positions(symbol);
+CREATE INDEX ix_portfolio_positions_recommended_action ON portfolio_positions(recommended_action);
 CREATE INDEX ix_audit_logs_event_type ON audit_logs(event_type);

@@ -4,6 +4,8 @@ export type RecommendationAction = "buy" | "sell" | "watch" | "avoid";
 export type SetupType = "long_term_watch" | "swing_entry" | "swing_add" | "event_setup";
 export type ComplianceStatus = "allowed" | "needs_review" | "blocked";
 export type WatchlistStatus = "watching" | "candidate" | "approved" | "archived";
+export type PositionSourceType = "manual_entry" | "csv_import" | "broker_readonly";
+export type PositionAction = "hold" | "add" | "trim" | "exit" | "review";
 
 export interface WatchlistItem {
   id: number;
@@ -118,6 +120,61 @@ export interface MarketSnapshot {
   captured_at: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PortfolioPosition {
+  id: number;
+  account_id: string | null;
+  source_type: PositionSourceType;
+  external_position_id: string | null;
+  last_synced_at: string | null;
+  symbol: string;
+  shares: number;
+  average_cost: number | null;
+  current_price: number | null;
+  unrealized_pnl: number | null;
+  portfolio_weight: number | null;
+  thesis: string | null;
+  notes: string | null;
+  recommended_action: PositionAction;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortfolioPositionCreate {
+  account_id?: string | null;
+  source_type?: PositionSourceType;
+  external_position_id?: string | null;
+  last_synced_at?: string | null;
+  symbol: string;
+  shares: number;
+  average_cost?: number | null;
+  current_price?: number | null;
+  unrealized_pnl?: number | null;
+  portfolio_weight?: number | null;
+  thesis?: string | null;
+  notes?: string | null;
+  recommended_action?: PositionAction;
+}
+
+export interface PositionCsvImportRequest {
+  csv_text: string;
+  account_id?: string | null;
+  source_type?: PositionSourceType;
+  last_synced_at?: string | null;
+}
+
+export interface PositionCsvImportResult {
+  imported_count: number;
+  skipped_count: number;
+  positions: PortfolioPosition[];
+  errors: string[];
+}
+
+export interface BrokerReadonlySyncRequest {
+  account_id: string;
+  positions: PortfolioPositionCreate[];
+  last_synced_at?: string | null;
 }
 
 export interface RecommendationDecisionRequest {

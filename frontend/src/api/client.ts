@@ -1,8 +1,13 @@
 import type {
   BucketType,
+  BrokerReadonlySyncRequest,
   JournalEntry,
   JournalEntryCreate,
   MarketSnapshot,
+  PortfolioPosition,
+  PortfolioPositionCreate,
+  PositionCsvImportRequest,
+  PositionCsvImportResult,
   Recommendation,
   RecommendationDecisionRequest,
   RecommendationDecisionStatus,
@@ -103,5 +108,30 @@ export function seedDemoData(): Promise<unknown> {
 export function refreshMarketSnapshots(): Promise<MarketSnapshot[]> {
   return request<MarketSnapshot[]>("/system/market-snapshots/refresh", {
     method: "POST"
+  });
+}
+
+export function listPortfolioPositions(): Promise<PortfolioPosition[]> {
+  return request<PortfolioPosition[]>("/portfolio/positions");
+}
+
+export function createPortfolioPosition(payload: PortfolioPositionCreate): Promise<PortfolioPosition> {
+  return request<PortfolioPosition>("/portfolio/positions", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function importPortfolioPositionsCsv(payload: PositionCsvImportRequest): Promise<PositionCsvImportResult> {
+  return request<PositionCsvImportResult>("/portfolio/positions/import-csv", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function syncBrokerReadonlyPositions(payload: BrokerReadonlySyncRequest): Promise<PortfolioPosition[]> {
+  return request<PortfolioPosition[]>("/portfolio/positions/broker-readonly/sync", {
+    method: "POST",
+    body: JSON.stringify(payload)
   });
 }

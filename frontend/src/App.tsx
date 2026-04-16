@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { Journal } from "./pages/Journal";
+import { Portfolio } from "./pages/Portfolio";
 import { Recommendations } from "./pages/Recommendations";
 import { Watchlist } from "./pages/Watchlist";
 
-type Page = "dashboard" | "watchlist" | "recommendations" | "journal";
+type Page = "dashboard" | "watchlist" | "recommendations" | "portfolio" | "journal";
 
 const pages: Array<{ id: Page; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
   { id: "watchlist", label: "Watchlist" },
   { id: "recommendations", label: "Recommendations" },
+  { id: "portfolio", label: "Portfolio" },
   { id: "journal", label: "Journal" }
 ];
 
@@ -19,6 +21,7 @@ export default function App() {
   const content = useMemo(() => {
     if (page === "watchlist") return <Watchlist />;
     if (page === "recommendations") return <Recommendations />;
+    if (page === "portfolio") return <Portfolio />;
     if (page === "journal") return <Journal />;
     return <Dashboard onNavigate={setPage} />;
   }, [page]);
