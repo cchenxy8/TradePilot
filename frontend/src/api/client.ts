@@ -4,6 +4,7 @@ import type {
   JournalEntry,
   JournalEntryCreate,
   MarketSnapshot,
+  PotentialScanResult,
   PortfolioPosition,
   PortfolioPositionCreate,
   PositionCsvImportRequest,
@@ -74,6 +75,10 @@ export function generateSwingRecommendations(): Promise<Recommendation[]> {
   return request<Recommendation[]>("/recommendations/generate/swing", {
     method: "POST"
   });
+}
+
+export function scanPotentialCandidates(filters?: { bucket?: BucketType; limit?: number }): Promise<PotentialScanResult> {
+  return request<PotentialScanResult>("/recommendations/potential-scan", undefined, filters);
 }
 
 export function decideRecommendation(

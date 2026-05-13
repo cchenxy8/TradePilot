@@ -9,6 +9,7 @@ from backend.app.schemas.decision import RecommendationDecisionRequest
 from backend.app.schemas.recommendation import RecommendationCreate, RecommendationRead
 from backend.app.services.audit import log_event
 from backend.app.services.market_data import create_market_snapshot_for_symbol, snapshot_price
+from backend.app.services.potential_engine import scan_potential_universe
 from backend.app.services.recommendation_engine import generate_swing_recommendations, swing_calibration_examples
 
 
@@ -68,6 +69,19 @@ def generate_swing_queue(db: Session = Depends(get_db)) -> list[Recommendation]:
 @router.get("/debug/swing-calibration")
 def debug_swing_calibration() -> dict[str, list[dict]]:
     return {"examples": swing_calibration_examples()}
+
+
+@router.get("/potential-scan")
+def potential_scan(
+    bucket: BucketType | None = Query(default=None),
+    limit: int = Query(default=12, ge=1, le=50),
+    db: Session = Depends(get_db),
+) -> dict:
+    return {
+        "universe": "active_watchlist",
+        "note": "Potential discovery is not a recommendation queue and is not a buy signal.",
+        "candidates": scan_potential_universe(db, bucket=bucket, limit=limit),
+    }
 
 
 @router.post(

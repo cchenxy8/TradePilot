@@ -6,6 +6,8 @@ export type ComplianceStatus = "allowed" | "needs_review" | "blocked";
 export type WatchlistStatus = "watching" | "candidate" | "approved" | "archived";
 export type PositionSourceType = "manual_entry" | "csv_import" | "broker_readonly";
 export type PositionAction = "hold" | "add" | "trim" | "exit" | "review";
+export type PotentialFlag = "high" | "medium" | "low";
+export type PotentialSetupStage = "emerging_potential" | "late_momentum";
 
 export interface WatchlistItem {
   id: number;
@@ -51,6 +53,22 @@ export interface Recommendation {
       avoid: number;
     };
     metrics: Record<string, number | null>;
+    potential_signal?: {
+      potential_score: number;
+      potential_flag: PotentialFlag;
+      setup_stage: PotentialSetupStage;
+      stage_label: string;
+      rationale: string;
+      developing_signals: string[];
+      cautions: string[];
+      label: string;
+      warning: string;
+      metrics: Record<string, number | null>;
+      score_thresholds: {
+        high: number;
+        medium: number;
+      };
+    };
   } | null;
   generated_at: string;
   decided_at: string | null;
@@ -122,6 +140,35 @@ export interface MarketSnapshot {
   updated_at: string;
 }
 
+export interface PotentialCandidate {
+  symbol: string;
+  bucket: BucketType;
+  watchlist_item_id: number;
+  thesis: string | null;
+  potential_score: number;
+  potential_flag: PotentialFlag;
+  setup_stage: PotentialSetupStage;
+  stage_label: string;
+  rationale: string;
+  developing_signals: string[];
+  cautions: string[];
+  warning: string;
+  metrics: Record<string, number | null>;
+  market_snapshot: {
+    snapshot_price: number;
+    data_provider: string;
+    data_source_type: string;
+    refreshed_at: string;
+    is_provider_backed: boolean;
+  };
+}
+
+export interface PotentialScanResult {
+  universe: string;
+  note: string;
+  candidates: PotentialCandidate[];
+}
+
 export interface PortfolioPosition {
   id: number;
   account_id: string | null;
@@ -145,6 +192,7 @@ export interface PortfolioPosition {
     moving_average_20: number;
     ma50: number;
     trend_positive: boolean;
+    price_vs_ma20_pct?: number | null;
     rsi_14: number;
     volume_ratio: number | null;
     daily_change_pct: number;
@@ -152,6 +200,7 @@ export interface PortfolioPosition {
     data_source_type: string;
     refreshed_at: string;
     holding_type?: "fund_or_index" | "individual_stock";
+    momentum_stage?: "late_momentum" | "intact_or_emerging";
   } | null;
   read_only_note: string;
   created_at: string;

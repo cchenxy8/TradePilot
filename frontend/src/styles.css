@@ -381,6 +381,116 @@ main {
   line-height: 1.35;
 }
 
+.potential-signal {
+  background: #fbfcfa;
+  border: 1px solid #dce4df;
+  border-left: 4px solid #8da89c;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem;
+}
+
+.potential-signal.high {
+  border-left-color: #0f6b56;
+}
+
+.potential-signal.medium {
+  border-left-color: #b79a45;
+}
+
+.potential-signal.low {
+  border-left-color: #87918d;
+}
+
+.potential-heading {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.potential-heading div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.potential-heading span,
+.potential-signal small {
+  color: #66736e;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.potential-heading strong {
+  color: #22302b;
+  font-size: 1rem;
+}
+
+.potential-signal p {
+  line-height: 1.35;
+}
+
+.potential-details {
+  border-left: 4px solid #8da89c;
+}
+
+.potential-discovery {
+  background: #ffffff;
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.section-heading > p {
+  color: #52635d;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 620px;
+}
+
+.subsection-title {
+  margin: 0.25rem 0 0;
+}
+
+.potential-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.potential-card {
+  border: 1px solid #dce4df;
+  border-left: 4px solid #8da89c;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.9rem;
+}
+
+.potential-card.emerging_potential {
+  border-left-color: #0f6b56;
+}
+
+.potential-card.late_momentum {
+  border-left-color: #b79a45;
+}
+
+.potential-card h3,
+.potential-card p {
+  margin: 0;
+}
+
+.potential-card p {
+  line-height: 1.4;
+}
+
+.potential-card small {
+  color: #66736e;
+  line-height: 1.35;
+}
+
 .card-copy {
   display: grid;
   gap: 0.45rem;
@@ -574,6 +684,21 @@ main {
 .status-pill.deferred {
   background: #eee5cd;
   color: #6d531d;
+}
+
+.status-pill.high {
+  background: #d7efe4;
+  color: #0f5f45;
+}
+
+.status-pill.medium {
+  background: #eee5cd;
+  color: #6d531d;
+}
+
+.status-pill.low {
+  background: #e4e6e5;
+  color: #66736e;
 }
 
 .status-pill.watching,
@@ -1085,6 +1210,7 @@ label {
   .journal-form,
   .portfolio-form,
   .position-grid,
+  .potential-grid,
   .action-summary {
     grid-template-columns: 1fr;
   }

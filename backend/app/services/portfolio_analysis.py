@@ -75,6 +75,12 @@ def _pnl_pct(position: PortfolioPosition, price: Decimal | None) -> float | None
     return float(((price - position.average_cost) / position.average_cost) * 100)
 
 
+def _pct_distance(value: Decimal, reference: Decimal) -> float:
+    if reference == 0:
+        return 0.0
+    return float(((value - reference) / reference) * 100)
+
+
 def _is_fund_like(symbol: str) -> bool:
     normalized = symbol.upper().strip()
     return normalized in BROAD_FUND_SYMBOLS or normalized.endswith(("ETF", ".ETF"))
@@ -125,6 +131,26 @@ def _trim_gain_threshold(is_fund_like: bool, hot_momentum: bool, light_volume: b
     return _threshold("fund_large_gain_pct" if is_fund_like else "stock_large_gain_pct")
 
 
+def _late_overheated_trim_gain_threshold(is_fund_like: bool) -> float:
+    return _threshold(
+        "fund_late_overheated_trim_gain_pct" if is_fund_like else "stock_late_overheated_trim_gain_pct"
+    )
+
+
+def _late_momentum_reasons(snapshot: MarketSnapshot, price: Decimal | None) -> tuple[bool, list[str], float | None]:
+    reasons: list[str] = []
+    price_vs_ma20 = _pct_distance(price, snapshot.moving_average_20) if price is not None else None
+
+    if snapshot.rsi_14 >= _threshold("late_momentum_rsi"):
+        reasons.append("RSI is already in a late-momentum range")
+    if price_vs_ma20 is not None and price_vs_ma20 >= _threshold("late_momentum_price_above_ma20_pct"):
+        reasons.append(f"price is {price_vs_ma20:.1f}% above MA20")
+    if snapshot.daily_change_pct > _threshold("late_momentum_daily_change_pct"):
+        reasons.append(f"daily move is strong at {snapshot.daily_change_pct:.1f}%")
+
+    return bool(reasons), reasons, price_vs_ma20
+
+
 def _assess_without_snapshot(position: PortfolioPosition, pnl_pct: float | None, is_fund_like: bool) -> tuple[PositionAction, list[str]]:
     flags = _position_flags(position, pnl_pct, is_fund_like)
     if flags["concentrated"]:
@@ -152,11 +178,13 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
             and price >= snapshot.moving_average_20
             and snapshot.moving_average_20 >= snapshot.ma50
         )
+        late_momentum, late_momentum_reasons, price_vs_ma20 = _late_momentum_reasons(snapshot, price)
         snapshot_payload = {
             "snapshot_price": float(price) if price is not None else None,
             "moving_average_20": float(snapshot.moving_average_20),
             "ma50": float(snapshot.ma50),
             "trend_positive": trend_positive,
+            "price_vs_ma20_pct": round(price_vs_ma20, 2) if price_vs_ma20 is not None else None,
             "rsi_14": snapshot.rsi_14,
             "volume_ratio": round(volume_ratio, 2) if volume_ratio is not None else None,
             "daily_change_pct": snapshot.daily_change_pct,
@@ -164,10 +192,14 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
             "data_source_type": snapshot.data_source_type,
             "refreshed_at": snapshot.refreshed_at.isoformat(),
             "holding_type": "fund_or_index" if is_fund_like else "individual_stock",
+            "momentum_stage": "late_momentum" if late_momentum else "intact_or_emerging",
         }
     else:
         volume_ratio = None
         trend_positive = None
+        late_momentum = False
+        late_momentum_reasons = []
+        price_vs_ma20 = None
 
     action = PositionAction.REVIEW
     rationale_parts: list[str] = []
@@ -190,17 +222,26 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
         light_volume = volume_ratio is not None and volume_ratio < _threshold("light_volume_ratio")
         trim_gain_threshold = _trim_gain_threshold(is_fund_like, hot_momentum, light_volume)
         trim_pressure = pnl_pct is not None and pnl_pct >= trim_gain_threshold and (hot_momentum or light_volume)
+        late_overheated_trim_pressure = (
+            pnl_pct is not None
+            and pnl_pct >= _late_overheated_trim_gain_threshold(is_fund_like)
+            and hot_momentum
+            and late_momentum
+        )
 
         if not trend_positive and loss_breakdown:
             action = PositionAction.EXIT
             rationale_parts.append("Use Exit because trend has weakened and the position is below cost.")
-        elif concentrated or trim_pressure:
+        elif concentrated or trim_pressure or late_overheated_trim_pressure:
             action = PositionAction.TRIM
-            rationale_parts.append(
-                "Use Trim because exposure or profit risk is elevated."
-                if concentrated
-                else "Use Trim because profit cushion, hot momentum, and/or weak volume are stacked."
-            )
+            if concentrated:
+                rationale_parts.append("Use Trim because exposure or profit risk is elevated.")
+            elif late_overheated_trim_pressure:
+                rationale_parts.append(
+                    "Use Trim because an existing profit cushion is paired with very hot, late-stage momentum."
+                )
+            else:
+                rationale_parts.append("Use Trim because profit cushion, hot momentum, and/or weak volume are stacked.")
         elif trend_positive and not elevated_momentum and not light_volume and not concentrated and add_eligible_pnl:
             action = PositionAction.ADD
             rationale_parts.append(
@@ -232,6 +273,8 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
             rationale_parts.append(f"RSI is elevated at {snapshot.rsi_14:.1f}.")
         else:
             rationale_parts.append(f"RSI is {snapshot.rsi_14:.1f}.")
+        if late_momentum_reasons:
+            rationale_parts.append(f"Late-momentum checks are active: {', '.join(late_momentum_reasons)}.")
         if light_volume:
             rationale_parts.append(f"Volume confirmation is light at {volume_ratio:.2f}x average.")
         elif volume_ratio is not None:

@@ -20,6 +20,7 @@ from backend.app.services.market_data import (
     is_provider_backed,
     snapshot_price,
 )
+from backend.app.services.potential_engine import evaluate_potential_signal
 from backend.app.services.swing_scoring_config import (
     SWING_RULE_BOUNDS,
     SWING_SCORE_BASE,
@@ -340,6 +341,7 @@ def swing_calibration_examples() -> list[dict]:
         snapshot = example["snapshot"]
         price = example["price"]
         evaluation = _evaluate_swing_rules(snapshot, price)
+        potential_signal = evaluate_potential_signal(snapshot, price)
         action = _recommendation_action(evaluation)
         results.append(
             {
@@ -356,6 +358,9 @@ def swing_calibration_examples() -> list[dict]:
                 },
                 "recommendation_action": action.value,
                 "final_score": evaluation["final_score"],
+                "potential_flag": potential_signal["potential_flag"],
+                "potential_score": potential_signal["potential_score"],
+                "potential_rationale": potential_signal["rationale"],
                 "passed_signals": evaluation["passed_signals"],
                 "penalties": evaluation["penalties"],
                 "avoid_reasons": evaluation["avoid_reasons"],
@@ -381,6 +386,7 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
 
         price = snapshot_price(snapshot)
         evaluation = _evaluate_swing_rules(snapshot, price)
+        potential_signal = evaluate_potential_signal(snapshot, price)
         days_to_earnings = evaluation["days_to_earnings"]
         earnings_near = days_to_earnings is not None and 0 <= days_to_earnings <= 14
         existing_pending = db.scalar(
@@ -422,6 +428,7 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
                 "daily_change_pct": snapshot.daily_change_pct,
                 "days_to_earnings": days_to_earnings,
             },
+            "potential_signal": potential_signal,
         }
         recommendation_fields = {
             "symbol": item.symbol,
@@ -494,6 +501,7 @@ def generate_swing_recommendations(db: Session) -> list[Recommendation]:
                     "rsi_zone": evaluation["rsi_zone"],
                     "days_to_earnings": days_to_earnings,
                 },
+                "potential_signal": potential_signal,
                 "compliance_status": recommendation.compliance_status.value,
                 "market_snapshot_id": snapshot.id,
                 "data_provider": snapshot.data_provider,
