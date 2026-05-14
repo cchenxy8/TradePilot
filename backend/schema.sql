@@ -13,6 +13,8 @@ CREATE TABLE watchlist_items (
     bucket bucket_type NOT NULL,
     status watchlist_status NOT NULL DEFAULT 'watching',
     thesis TEXT,
+    next_step TEXT,
+    trigger_condition TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

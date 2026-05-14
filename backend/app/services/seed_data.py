@@ -171,6 +171,24 @@ ASSET_SEEDS = [
 ]
 
 
+def _default_next_step(bucket: BucketType, status: WatchlistStatus) -> str:
+    if status == WatchlistStatus.APPROVED:
+        return "Review position fit and confirm risk before acting."
+    if bucket == BucketType.CORE:
+        return "Recheck valuation, trend quality, and portfolio overlap."
+    if bucket == BucketType.EVENT:
+        return "Track catalyst date, expected move, and post-event reaction."
+    return "Wait for setup quality to improve before creating a trade plan."
+
+
+def _default_trigger_condition(bucket: BucketType) -> str:
+    if bucket == BucketType.CORE:
+        return "Add only if the long-term thesis remains intact and price offers a better risk/reward entry."
+    if bucket == BucketType.EVENT:
+        return "Act only after the catalyst path is clear and the market reaction confirms demand."
+    return "Act only on a clean breakout or pullback hold with supportive volume."
+
+
 def seed_demo_data(db: Session) -> dict[str, int]:
     existing = db.scalar(select(WatchlistItem.id).limit(1))
     if existing is not None:
@@ -190,6 +208,8 @@ def seed_demo_data(db: Session) -> dict[str, int]:
             bucket=asset["bucket"],
             status=asset["watchlist_status"],
             thesis=asset["thesis"],
+            next_step=_default_next_step(asset["bucket"], asset["watchlist_status"]),
+            trigger_condition=_default_trigger_condition(asset["bucket"]),
             is_active=True,
         )
         db.add(watchlist_item)

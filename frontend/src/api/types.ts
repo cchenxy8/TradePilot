@@ -15,6 +15,8 @@ export interface WatchlistItem {
   bucket: BucketType;
   status: WatchlistStatus;
   thesis: string | null;
+  next_step: string | null;
+  trigger_condition: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -98,6 +100,17 @@ export interface WatchlistItemCreate {
   bucket: BucketType;
   status?: WatchlistStatus;
   thesis?: string | null;
+  next_step?: string | null;
+  trigger_condition?: string | null;
+  is_active?: boolean;
+}
+
+export interface WatchlistItemUpdate {
+  bucket?: BucketType;
+  status?: WatchlistStatus;
+  thesis?: string | null;
+  next_step?: string | null;
+  trigger_condition?: string | null;
   is_active?: boolean;
 }
 

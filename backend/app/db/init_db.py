@@ -8,6 +8,12 @@ def create_db_and_tables() -> None:
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
         connection.execute(
+            text("ALTER TABLE watchlist_items ADD COLUMN IF NOT EXISTS next_step TEXT")
+        )
+        connection.execute(
+            text("ALTER TABLE watchlist_items ADD COLUMN IF NOT EXISTS trigger_condition TEXT")
+        )
+        connection.execute(
             text("ALTER TABLE market_snapshots ADD COLUMN IF NOT EXISTS latest_price NUMERIC(12, 2)")
         )
         connection.execute(

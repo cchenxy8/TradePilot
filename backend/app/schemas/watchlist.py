@@ -9,6 +9,8 @@ class WatchlistItemCreate(BaseModel):
     bucket: BucketType
     status: WatchlistStatus = WatchlistStatus.WATCHING
     thesis: str | None = None
+    next_step: str | None = None
+    trigger_condition: str | None = None
     is_active: bool = True
 
 
@@ -16,6 +18,8 @@ class WatchlistItemUpdate(BaseModel):
     bucket: BucketType | None = None
     status: WatchlistStatus | None = None
     thesis: str | None = None
+    next_step: str | None = None
+    trigger_condition: str | None = None
     is_active: bool | None = None
 
 
@@ -25,4 +29,6 @@ class WatchlistItemRead(TimestampedRead):
     bucket: BucketType
     status: WatchlistStatus
     thesis: str | None
+    next_step: str | None
+    trigger_condition: str | None
     is_active: bool

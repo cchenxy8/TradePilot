@@ -1,5 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { createWatchlistItem, listMarketSnapshots, listRecommendations, listWatchlistItems } from "../api/client";
+import {
+  createWatchlistItem,
+  listMarketSnapshots,
+  listRecommendations,
+  listWatchlistItems,
+  updateWatchlistItem
+} from "../api/client";
 import type { BucketType, MarketSnapshot, Recommendation, WatchlistItem, WatchlistStatus } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { FilterBar } from "../components/FilterBar";
@@ -7,6 +13,17 @@ import { LoadingState } from "../components/LoadingState";
 import { labelAction, labelBucket, labelSetup, labelWatchlistStatus } from "../utils/labels";
 
 const statusOptions: Array<WatchlistStatus | "all"> = ["all", "watching", "candidate", "approved", "archived"];
+const workflowStatusOptions: WatchlistStatus[] = ["watching", "candidate", "approved", "archived"];
+const bucketOptions: BucketType[] = ["core", "swing", "event"];
+
+type WatchlistDraft = {
+  bucket: BucketType;
+  status: WatchlistStatus;
+  thesis: string;
+  next_step: string;
+  trigger_condition: string;
+  is_active: boolean;
+};
 
 function formatCurrency(value: number | null): string {
   if (value === null) return "n/a";
@@ -51,6 +68,10 @@ export function Watchlist() {
   const [symbol, setSymbol] = useState("");
   const [newBucket, setNewBucket] = useState<BucketType>("swing");
   const [thesis, setThesis] = useState("");
+  const [nextStep, setNextStep] = useState("");
+  const [triggerCondition, setTriggerCondition] = useState("");
+  const [drafts, setDrafts] = useState<Record<number, WatchlistDraft>>({});
+  const [savingId, setSavingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -78,6 +99,24 @@ export function Watchlist() {
   useEffect(() => {
     void load();
   }, [bucket]);
+
+  useEffect(() => {
+    setDrafts(
+      Object.fromEntries(
+        items.map((item) => [
+          item.id,
+          {
+            bucket: item.bucket,
+            status: item.status,
+            thesis: item.thesis ?? "",
+            next_step: item.next_step ?? "",
+            trigger_condition: item.trigger_condition ?? "",
+            is_active: item.is_active
+          }
+        ])
+      )
+    );
+  }, [items]);
 
   const filteredItems = useMemo(
     () => items.filter((item) => status === "all" || item.status === status),
@@ -129,14 +168,71 @@ export function Watchlist() {
         symbol: symbol.trim().toUpperCase(),
         bucket: newBucket,
         status: "watching",
-        thesis: thesis.trim() || null
+        thesis: thesis.trim() || null,
+        next_step: nextStep.trim() || null,
+        trigger_condition: triggerCondition.trim() || null
       });
       setSymbol("");
       setThesis("");
+      setNextStep("");
+      setTriggerCondition("");
       await load();
       setMessage("Watchlist item added.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to add watchlist item.");
+    }
+  }
+
+  function updateDraft<K extends keyof WatchlistDraft>(itemId: number, field: K, value: WatchlistDraft[K]) {
+    setDrafts((current) => ({
+      ...current,
+      [itemId]: {
+        ...(current[itemId] ?? {
+          bucket: "swing",
+          status: "watching",
+          thesis: "",
+          next_step: "",
+          trigger_condition: "",
+          is_active: true
+        }),
+        [field]: value
+      }
+    }));
+  }
+
+  function hasDraftChanges(item: WatchlistItem, draft: WatchlistDraft | undefined): boolean {
+    if (!draft) return false;
+    return (
+      draft.bucket !== item.bucket ||
+      draft.status !== item.status ||
+      draft.thesis !== (item.thesis ?? "") ||
+      draft.next_step !== (item.next_step ?? "") ||
+      draft.trigger_condition !== (item.trigger_condition ?? "") ||
+      draft.is_active !== item.is_active
+    );
+  }
+
+  async function handleSave(item: WatchlistItem) {
+    const draft = drafts[item.id];
+    if (!draft) return;
+
+    setSavingId(item.id);
+    setMessage(null);
+    try {
+      await updateWatchlistItem(item.id, {
+        bucket: draft.bucket,
+        status: draft.status,
+        thesis: draft.thesis.trim() || null,
+        next_step: draft.next_step.trim() || null,
+        trigger_condition: draft.trigger_condition.trim() || null,
+        is_active: draft.is_active
+      });
+      await load();
+      setMessage(`${item.symbol} workflow updated.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to update watchlist item.");
+    } finally {
+      setSavingId(null);
     }
   }
 
@@ -145,7 +241,8 @@ export function Watchlist() {
       <div className="page-header">
         <div>
           <p className="eyebrow">Watchlist</p>
-          <h2>Names under review</h2>
+          <h2>Research workspace</h2>
+          <p className="page-subtitle">Track the reason, status, next move, and trigger for every name under review.</p>
         </div>
       </div>
 
@@ -157,14 +254,28 @@ export function Watchlist() {
         <label>
           Bucket
           <select value={newBucket} onChange={(event) => setNewBucket(event.target.value as BucketType)}>
-            <option value="core">Core</option>
-            <option value="swing">Swing</option>
-            <option value="event">Event</option>
+            {bucketOptions.map((option) => (
+              <option value={option} key={option}>
+                {labelBucket(option)}
+              </option>
+            ))}
           </select>
         </label>
         <label className="wide-field">
-          Thesis
+          Why watching
           <input value={thesis} onChange={(event) => setThesis(event.target.value)} placeholder="Clean breakout watch" />
+        </label>
+        <label className="wide-field">
+          Next step
+          <input value={nextStep} onChange={(event) => setNextStep(event.target.value)} placeholder="Review after close" />
+        </label>
+        <label className="wide-field">
+          Trigger
+          <input
+            value={triggerCondition}
+            onChange={(event) => setTriggerCondition(event.target.value)}
+            placeholder="Hold above 20-day average on volume"
+          />
         </label>
         <button type="submit">Add</button>
       </form>
@@ -188,6 +299,8 @@ export function Watchlist() {
         {filteredItems.map((item) => {
           const linkedRecommendation = getLinkedRecommendation(item);
           const latestSnapshot = getLatestSnapshot(item);
+          const draft = drafts[item.id];
+          const changed = hasDraftChanges(item, draft);
 
           return (
             <article className="watchlist-card" key={item.id}>
@@ -198,7 +311,76 @@ export function Watchlist() {
                 </div>
                 <span className={`status-pill ${item.status}`}>{labelWatchlistStatus(item.status)}</span>
               </div>
-              <p>{item.thesis ?? "No thesis yet."}</p>
+              <div className="watchlist-controls">
+                <label>
+                  Bucket
+                  <select
+                    value={draft?.bucket ?? item.bucket}
+                    onChange={(event) => updateDraft(item.id, "bucket", event.target.value as BucketType)}
+                  >
+                    {bucketOptions.map((option) => (
+                      <option value={option} key={option}>
+                        {labelBucket(option)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={draft?.status ?? item.status}
+                    onChange={(event) => updateDraft(item.id, "status", event.target.value as WatchlistStatus)}
+                  >
+                    {workflowStatusOptions.map((option) => (
+                      <option value={option} key={option}>
+                        {labelWatchlistStatus(option)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="active-toggle">
+                  <input
+                    type="checkbox"
+                    checked={draft?.is_active ?? item.is_active}
+                    onChange={(event) => updateDraft(item.id, "is_active", event.target.checked)}
+                  />
+                  Active
+                </label>
+              </div>
+              <section className="research-workflow">
+                <label>
+                  Why watching
+                  <textarea
+                    value={draft?.thesis ?? ""}
+                    onChange={(event) => updateDraft(item.id, "thesis", event.target.value)}
+                    placeholder="No reason captured yet."
+                  />
+                </label>
+                <div className="workflow-pair">
+                  <label>
+                    Next step
+                    <textarea
+                      value={draft?.next_step ?? ""}
+                      onChange={(event) => updateDraft(item.id, "next_step", event.target.value)}
+                      placeholder="No next step yet."
+                    />
+                  </label>
+                  <label>
+                    Trigger
+                    <textarea
+                      value={draft?.trigger_condition ?? ""}
+                      onChange={(event) => updateDraft(item.id, "trigger_condition", event.target.value)}
+                      placeholder="No trigger defined yet."
+                    />
+                  </label>
+                </div>
+                <div className="workflow-actions">
+                  <span>{changed ? "Unsaved changes" : `Updated ${new Date(item.updated_at).toLocaleDateString()}`}</span>
+                  <button type="button" onClick={() => void handleSave(item)} disabled={!changed || savingId === item.id}>
+                    {savingId === item.id ? "Saving..." : "Save workflow"}
+                  </button>
+                </div>
+              </section>
               <div className="field-grid">
                 <div>
                   <span>Active</span>

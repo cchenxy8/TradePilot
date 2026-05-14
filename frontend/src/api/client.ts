@@ -15,7 +15,8 @@ import type {
   RecommendationDecisionRequest,
   RecommendationDecisionStatus,
   WatchlistItem,
-  WatchlistItemCreate
+  WatchlistItemCreate,
+  WatchlistItemUpdate
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
@@ -60,6 +61,13 @@ export function listWatchlistItems(filters?: { bucket?: BucketType }): Promise<W
 export function createWatchlistItem(payload: WatchlistItemCreate): Promise<WatchlistItem> {
   return request<WatchlistItem>("/watchlist", {
     method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateWatchlistItem(itemId: number, payload: WatchlistItemUpdate): Promise<WatchlistItem> {
+  return request<WatchlistItem>(`/watchlist/${itemId}`, {
+    method: "PATCH",
     body: JSON.stringify(payload)
   });
 }

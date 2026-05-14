@@ -18,4 +18,6 @@ class WatchlistItem(TimestampMixin, Base):
         index=True,
     )
     thesis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_step: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trigger_condition: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
