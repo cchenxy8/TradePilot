@@ -295,14 +295,17 @@ def _fetch_yahoo_quote(symbol: str) -> MarketQuote:
     daily_change_pct = quote_row.get("regularMarketChangePercent")
     daily_change_source = "yahoo_quote.regularMarketChangePercent"
     if daily_change_pct is None:
-        previous_close = (
-            quote_row.get("regularMarketPreviousClose")
-            or meta.get("previousClose")
-            or meta.get("chartPreviousClose")
-            or (closes[-2] if len(closes) >= 2 else None)
-        )
-        daily_change_pct = _calculate_change_pct(float(latest_price), previous_close)
-        daily_change_source = "derived_from_latest_price_and_previous_close"
+        if len(closes) >= 2:
+            daily_change_pct = _calculate_change_pct(closes[-1], closes[-2])
+            daily_change_source = "derived_from_yahoo_chart_last_two_daily_closes"
+        else:
+            previous_close = (
+                quote_row.get("regularMarketPreviousClose")
+                or meta.get("previousClose")
+                or meta.get("chartPreviousClose")
+            )
+            daily_change_pct = _calculate_change_pct(float(latest_price), previous_close)
+            daily_change_source = "derived_from_latest_price_and_previous_close"
 
     avg_volume_20d = int(mean(volumes[-20:])) if volumes else int(quote_row.get("averageDailyVolume10Day") or 0)
     avg_volume_source = "derived_from_yahoo_chart_3mo_daily_volume" if volumes else "yahoo_quote.averageDailyVolume10Day"

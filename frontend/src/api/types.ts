@@ -202,16 +202,25 @@ export interface PortfolioPosition {
   pnl_pct: number | null;
   market_snapshot: {
     snapshot_price: number | null;
+    position_price?: number | null;
     moving_average_20: number;
     ma50: number;
     trend_positive: boolean;
     price_vs_ma20_pct?: number | null;
+    ma20_vs_ma50_pct?: number | null;
     rsi_14: number;
     volume_ratio: number | null;
     daily_change_pct: number;
+    daily_change_for_decision?: number | null;
+    daily_change_is_suspect?: boolean;
     data_provider: string;
     data_source_type: string;
     refreshed_at: string;
+    snapshot_age_hours?: number;
+    is_current?: boolean;
+    field_sources?: Record<string, string> | null;
+    data_quality_warnings?: string[];
+    position_snapshot_price_mismatch_pct?: number | null;
     holding_type?: "fund_or_index" | "individual_stock";
     momentum_stage?: "late_momentum" | "intact_or_emerging";
   } | null;

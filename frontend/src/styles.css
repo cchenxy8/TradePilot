@@ -384,6 +384,10 @@ main {
   border-left-color: #d9b2b2;
 }
 
+.decision-summary.data-quality-panel div {
+  border-left-color: #e0c36b;
+}
+
 .decision-summary p {
   line-height: 1.35;
 }

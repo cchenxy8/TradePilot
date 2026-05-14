@@ -46,6 +46,18 @@ function formatPercent(value: number | null): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function formatMetricPercent(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "n/a";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+}
+
+function formatDailyChange(position: PortfolioPosition): string {
+  const snapshot = position.market_snapshot;
+  if (!snapshot) return "n/a";
+  const label = formatMetricPercent(snapshot.daily_change_pct);
+  return snapshot.daily_change_is_suspect ? `${label} check` : label;
+}
+
 export function Portfolio() {
   const [positions, setPositions] = useState<PortfolioPosition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -422,6 +434,14 @@ export function Portfolio() {
                 <strong>{position.market_snapshot ? position.market_snapshot.rsi_14.toFixed(1) : "n/a"}</strong>
               </div>
               <div>
+                <span>Price vs MA20</span>
+                <strong>{formatMetricPercent(position.market_snapshot?.price_vs_ma20_pct)}</strong>
+              </div>
+              <div>
+                <span>MA20 vs MA50</span>
+                <strong>{formatMetricPercent(position.market_snapshot?.ma20_vs_ma50_pct)}</strong>
+              </div>
+              <div>
                 <span>Volume</span>
                 <strong>
                   {position.market_snapshot?.volume_ratio === null || position.market_snapshot?.volume_ratio === undefined
@@ -429,7 +449,19 @@ export function Portfolio() {
                     : `${position.market_snapshot.volume_ratio.toFixed(2)}x`}
                 </strong>
               </div>
+              <div>
+                <span>Daily change</span>
+                <strong>{formatDailyChange(position)}</strong>
+              </div>
             </div>
+            {position.market_snapshot?.data_quality_warnings?.length ? (
+              <section className="decision-summary data-quality-panel">
+                <div>
+                  <span>Market data checks</span>
+                  <p>{position.market_snapshot.data_quality_warnings.join(" ")}</p>
+                </div>
+              </section>
+            ) : null}
             <section className="decision-summary">
               <div>
                 <span>Assessment</span>
