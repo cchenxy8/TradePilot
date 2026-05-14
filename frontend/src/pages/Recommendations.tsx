@@ -116,7 +116,8 @@ export function Recommendations() {
       <div className="page-header">
         <div>
           <p className="eyebrow">Recommendations</p>
-          <h2>Manual decision queue</h2>
+          <h2>Entry decision queue</h2>
+          <p className="page-subtitle">Use this page to decide whether a new position is worth initiating now.</p>
         </div>
         <div className="button-row">
           <button onClick={loadPotential} disabled={potentialLoading}>
@@ -136,6 +137,14 @@ export function Recommendations() {
 
       {message ? <p className="notice">{message}</p> : null}
       {loading ? <LoadingState label="Loading decision queue..." /> : null}
+
+      <section className="scope-note">
+        <strong>Entry scope</strong>
+        <p>
+          Buy, Watch, or Avoid here describe fresh entry timing. Avoid does not automatically mean sell an existing holding;
+          held-position management lives in Portfolio.
+        </p>
+      </section>
 
       <div className="decision-dashboard">
         <div>

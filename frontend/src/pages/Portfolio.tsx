@@ -192,10 +192,19 @@ export function Portfolio() {
         <div>
           <p className="eyebrow">Portfolio</p>
           <h2>Positions and holdings review</h2>
+          <p className="page-subtitle">Use this page to manage what you already hold, not to decide fresh entries.</p>
         </div>
       </div>
 
       {message ? <p className="notice">{message}</p> : null}
+
+      <section className="scope-note">
+        <strong>Held-position scope</strong>
+        <p>
+          Hold, Add, Trim, or Exit are read-only management suggestions for existing positions. Hold or Trim here does
+          not make the symbol a fresh buy; entry timing belongs in Recommendations.
+        </p>
+      </section>
 
       <div className="decision-dashboard">
         <div>
@@ -400,6 +409,7 @@ export function Portfolio() {
                 {labelPositionAction(position.recommended_action)}
               </span>
             </div>
+            <p className="context-note">Held-position action. Review manually; TradePilot does not place orders.</p>
             <div className="snapshot-grid">
               <div>
                 <span>Shares</span>

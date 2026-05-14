@@ -206,6 +206,31 @@ main {
   padding: 0.85rem 1rem;
 }
 
+.scope-note {
+  background: #ffffff;
+  border: 1px solid #dce4df;
+  border-left: 4px solid #0f6b56;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+}
+
+.scope-note strong {
+  color: #18342f;
+}
+
+.scope-note p,
+.context-note {
+  color: #52635d;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.context-note {
+  font-size: 0.86rem;
+}
+
 .metrics-grid,
 .card-grid {
   display: grid;
@@ -249,6 +274,24 @@ main {
   display: grid;
   gap: 1rem;
   padding: 1.1rem;
+}
+
+.recommendation-card {
+  align-content: start;
+  gap: 0.9rem;
+  justify-items: center;
+}
+
+.recommendation-card > .card-heading,
+.recommendation-card > .primary-action,
+.recommendation-card > .context-note,
+.recommendation-card > .decision-strip,
+.recommendation-card > .decision-summary,
+.recommendation-card > .screening-metrics,
+.recommendation-card > .screening-actions {
+  justify-self: center;
+  max-width: 560px;
+  width: 100%;
 }
 
 .recommendation-card h4,
@@ -306,52 +349,53 @@ main {
 
 .decision-strip {
   align-items: stretch;
-  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .field-grid div,
 .decision-strip div,
 .snapshot-grid div {
-  background: #f5f7f4;
+  background: #f7f9f6;
   border-radius: 8px;
   display: grid;
-  gap: 0.25rem;
-  padding: 0.75rem;
+  gap: 0.2rem;
+  padding: 0.68rem;
 }
 
 .decision-strip div:first-child {
-  background: #e7f0eb;
+  background: #edf5f1;
 }
 
 .decision-strip .compliance-metric.allowed {
-  background: #edf8f2;
+  background: #f1f9f5;
 }
 
 .decision-strip .compliance-metric.needs_review {
-  background: #fff7d6;
+  background: #fff9e2;
 }
 
 .decision-strip .compliance-metric.blocked {
-  background: #f1dada;
+  background: #f6e5e5;
 }
 
 .decision-strip strong {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
 }
 
 .confidence-metric strong {
   color: #0f6b56;
-  font-size: 1.55rem;
+  font-size: 1.35rem;
 }
 
 .primary-action {
   align-items: center;
-  background: #fbfcfa;
+  background: #ffffff;
   border: 1px solid #e5ebe7;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
-  padding: 0.75rem 0.85rem;
+  padding: 0.65rem 0.78rem;
 }
 
 .primary-action span,
@@ -365,23 +409,23 @@ main {
 
 .primary-action strong {
   color: #0f6b56;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
 }
 
 .decision-summary {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.58rem;
 }
 
 .decision-summary div {
-  border-left: 3px solid #cfdcd5;
+  border-left: 2px solid #d8e2dd;
   display: grid;
-  gap: 0.35rem;
-  padding-left: 0.75rem;
+  gap: 0.28rem;
+  padding-left: 0.68rem;
 }
 
 .decision-summary .top-risk {
-  border-left-color: #d9b2b2;
+  border-left-color: #e0c1c1;
 }
 
 .decision-summary.data-quality-panel div {
@@ -390,6 +434,31 @@ main {
 
 .decision-summary p {
   line-height: 1.35;
+}
+
+.screening-metrics {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.screening-metrics div {
+  background: #f7f9f6;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.58rem 0.62rem;
+}
+
+.screening-metrics span {
+  color: #66736e;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.screening-metrics strong {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
 }
 
 .potential-signal {
@@ -578,6 +647,57 @@ main {
   padding: 0.45rem 0.7rem;
 }
 
+.screening-actions {
+  align-items: stretch;
+  background: #fbfcfa;
+  border: 1px solid #e5ebe7;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  justify-self: center;
+  max-width: 560px;
+  padding: 0.65rem;
+  width: 100%;
+}
+
+.screening-actions.solo {
+  grid-template-columns: 1fr;
+  max-width: 420px;
+}
+
+.screening-actions .details-toggle,
+.quick-defer {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  line-height: 1.1;
+  min-height: 48px;
+  padding: 0 1rem;
+  text-align: center;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.screening-actions .details-toggle {
+  background: #0f6b56;
+  border: 0;
+  color: #ffffff;
+  justify-self: stretch;
+}
+
+.quick-defer {
+  background: #ffffff;
+  border: 1px solid #cfdcd5;
+  color: #0f6b56;
+  font-weight: 800;
+  justify-self: stretch;
+}
+
+.quick-defer:hover {
+  background: #eef5f1;
+}
+
 .details-modal-backdrop {
   align-items: stretch;
   background: rgba(21, 31, 27, 0.28);
@@ -613,6 +733,20 @@ main {
 
 .details-modal-header h3 {
   margin: 0.15rem 0 0;
+}
+
+.confirmation-panel {
+  background: #fbfcfa;
+  border: 1px solid #e5ebe7;
+  border-radius: 8px;
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem;
+}
+
+.confirmation-panel .decision-actions {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .modal-close {
@@ -739,6 +873,24 @@ main {
 
 .decision-actions button {
   min-height: 48px;
+}
+
+.audit-copy {
+  background: #fbfcfa;
+  border: 1px solid #e5ebe7;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.audit-copy ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.audit-copy li {
+  line-height: 1.35;
 }
 
 .approve-action {
@@ -1395,6 +1547,8 @@ label {
   .decision-dashboard,
   .signal-dashboard,
   .decision-strip,
+  .screening-metrics,
+  .screening-actions,
   .decision-actions,
   .snapshot-grid,
   .journal-metrics,

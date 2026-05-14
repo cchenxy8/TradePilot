@@ -101,12 +101,41 @@ function getRefreshedLabel(snapshot: Record<string, unknown> | null): string | n
   return `Last refreshed ${formatDateTime(snapshot.refreshed_at)}`;
 }
 
+function getScreeningMetricRows(recommendation: Recommendation): Array<[string, string]> {
+  const metrics = recommendation.rule_results?.metrics ?? {};
+  const rows: Array<[string, string]> = [];
+  if ("price_vs_ma20_pct" in metrics) rows.push(["Price vs MA20", formatRuleMetric("price_vs_ma20_pct", metrics.price_vs_ma20_pct)]);
+  if ("rsi_14" in metrics) rows.push(["RSI", formatRuleMetric("rsi_14", metrics.rsi_14)]);
+  if ("volume_ratio" in metrics) rows.push(["Volume", formatRuleMetric("volume_ratio", metrics.volume_ratio)]);
+  if (rows.length < 3 && "daily_change_pct" in metrics) {
+    rows.push(["Daily change", formatRuleMetric("daily_change_pct", metrics.daily_change_pct)]);
+  }
+  return rows.slice(0, 3);
+}
+
+function getAuditNotes(snapshot: Record<string, unknown> | null): string[] {
+  if (!snapshot) return ["Market snapshot was not attached to this recommendation."];
+  const notes: string[] = [];
+  const delayNote = getDelayNote(snapshot);
+  const refreshedLabel = getRefreshedLabel(snapshot);
+  if (refreshedLabel) notes.push(refreshedLabel);
+  if (delayNote) notes.push(delayNote);
+  if (Array.isArray(snapshot.provider_warnings) && snapshot.provider_warnings.length > 0) {
+    notes.push(`Provider warnings: ${snapshot.provider_warnings.join(" ")}`);
+  }
+  if (snapshot.field_sources && typeof snapshot.field_sources === "object") {
+    notes.push("Field sources are available in the stored market snapshot.");
+  }
+  return notes;
+}
+
 export function RecommendationCard({ recommendation, busy = false, compact = false, onDecision }: RecommendationCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const canDecide = recommendation.decision_status === "pending" && onDecision;
   const snapshotRows = getSnapshotRows(recommendation.market_snapshot);
   const delayNote = getDelayNote(recommendation.market_snapshot);
   const refreshedLabel = getRefreshedLabel(recommendation.market_snapshot);
+  const auditNotes = getAuditNotes(recommendation.market_snapshot);
   const passedSignals = recommendation.rule_results?.passed_signals ?? [];
   const failedSignals = recommendation.rule_results?.failed_signals ?? [];
   const penalties = recommendation.rule_results?.penalties ?? [];
@@ -114,6 +143,12 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
   const whySummary = conciseSummary(passedSignals, recommendation.why_now);
   const riskSummary = conciseSummary([...avoidReasons, ...penalties, ...failedSignals], recommendation.risk_notes);
   const metricRows = Object.entries(recommendation.rule_results?.metrics ?? {});
+  const screeningMetricRows = getScreeningMetricRows(recommendation);
+  const handleDecision = (decision: RecommendationDecisionRequest["decision"], closeDetails = false) => {
+    if (!onDecision) return;
+    onDecision(recommendation.id, decision);
+    if (closeDetails) setDetailsOpen(false);
+  };
 
   return (
     <>
@@ -136,9 +171,11 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
         </div>
 
         <div className="primary-action">
-          <span>Recommendation</span>
+          <span>Entry action</span>
           <strong>{labelAction(recommendation.recommendation_action)}</strong>
         </div>
+
+        <p className="context-note">Fresh-entry view. Avoid means do not initiate now; it is not a sell instruction.</p>
 
         <div className="decision-strip">
           <div className="confidence-metric">
@@ -166,37 +203,32 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
           </div>
         </section>
 
-        {!compact && snapshotRows.length > 0 ? (
-          <section className="market-context market-context-compact">
-            <h4>Market context</h4>
-            <div className="snapshot-grid">
-              {snapshotRows.slice(0, 4).map(([key, value]) => (
-                <div key={key}>
-                  <span>{key}</span>
-                  <strong>{value}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <button className="text-button details-toggle" type="button" onClick={() => setDetailsOpen(true)}>
-          View details
-        </button>
-
-        {canDecide ? (
-          <div className="decision-actions" aria-label={`Decision actions for ${recommendation.symbol}`}>
-            <button className="approve-action" disabled={busy} onClick={() => onDecision(recommendation.id, "approved")}>
-              Approve
-            </button>
-            <button disabled={busy} className="defer-action" onClick={() => onDecision(recommendation.id, "deferred")}>
-              Defer
-            </button>
-            <button disabled={busy} className="reject-action" onClick={() => onDecision(recommendation.id, "rejected")}>
-              Reject
-            </button>
+        {screeningMetricRows.length > 0 ? (
+          <div className="screening-metrics">
+            {screeningMetricRows.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
           </div>
         ) : null}
+
+        <div className={`screening-actions ${canDecide ? "" : "solo"}`}>
+          <button className="details-toggle" type="button" onClick={() => setDetailsOpen(true)}>
+            Review details
+          </button>
+          {canDecide ? (
+            <button
+              disabled={busy}
+              className="quick-defer"
+              type="button"
+              onClick={() => handleDecision("deferred")}
+            >
+              Defer
+            </button>
+          ) : null}
+        </div>
       </article>
 
       {detailsOpen ? (
@@ -223,6 +255,42 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
                 Close
               </button>
             </div>
+
+            <section className="confirmation-panel">
+              <div className="primary-action">
+                <span>Entry action under review</span>
+                <strong>{labelAction(recommendation.recommendation_action)}</strong>
+              </div>
+              <p className="context-note">
+                Confirming here records a manual decision for a fresh-entry recommendation. It does not place an order or
+                manage an existing holding.
+              </p>
+              {canDecide ? (
+                <div className="decision-actions" aria-label={`Confirmation actions for ${recommendation.symbol}`}>
+                  <button
+                    className="approve-action"
+                    disabled={busy}
+                    onClick={() => handleDecision("approved", true)}
+                  >
+                    Approve entry
+                  </button>
+                  <button
+                    disabled={busy}
+                    className="defer-action"
+                    onClick={() => handleDecision("deferred", true)}
+                  >
+                    Defer
+                  </button>
+                  <button
+                    disabled={busy}
+                    className="reject-action"
+                    onClick={() => handleDecision("rejected", true)}
+                  >
+                    Reject entry
+                  </button>
+                </div>
+              ) : null}
+            </section>
 
             <section className="card-copy">
               <h4>Full rationale</h4>
@@ -311,8 +379,27 @@ export function RecommendationCard({ recommendation, busy = false, compact = fal
                   <span>{getFreshnessLabel(recommendation.market_snapshot)}</span>
                 </div>
               </div>
+              {snapshotRows.length > 0 ? (
+                <div className="snapshot-grid">
+                  {snapshotRows.map(([key, value]) => (
+                    <div key={key}>
+                      <span>{key}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {refreshedLabel ? <p className="source-note">{refreshedLabel}</p> : null}
               {delayNote ? <p className="source-note">{delayNote}</p> : null}
+            </section>
+
+            <section className="card-copy audit-copy">
+              <h4>Audit notes</h4>
+              <ul>
+                {auditNotes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
             </section>
           </aside>
         </div>
