@@ -137,6 +137,10 @@ def _late_overheated_trim_gain_threshold(is_fund_like: bool) -> float:
     )
 
 
+def _late_elevated_trim_gain_threshold(is_fund_like: bool) -> float:
+    return _threshold("fund_late_elevated_trim_gain_pct" if is_fund_like else "stock_late_elevated_trim_gain_pct")
+
+
 def _late_momentum_reasons(snapshot: MarketSnapshot, price: Decimal | None) -> tuple[bool, list[str], float | None]:
     reasons: list[str] = []
     price_vs_ma20 = _pct_distance(price, snapshot.moving_average_20) if price is not None else None
@@ -220,6 +224,10 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
         hot_momentum = snapshot.rsi_14 >= _threshold("hot_rsi_fund" if is_fund_like else "hot_rsi_stock")
         elevated_momentum = snapshot.rsi_14 >= _threshold("elevated_rsi")
         light_volume = volume_ratio is not None and volume_ratio < _threshold("light_volume_ratio")
+        extended_volume = volume_ratio is not None and volume_ratio >= _threshold("extended_volume_ratio")
+        stretched_price = (
+            price_vs_ma20 is not None and price_vs_ma20 >= _threshold("stretched_price_above_ma20_pct")
+        )
         trim_gain_threshold = _trim_gain_threshold(is_fund_like, hot_momentum, light_volume)
         trim_pressure = pnl_pct is not None and pnl_pct >= trim_gain_threshold and (hot_momentum or light_volume)
         late_overheated_trim_pressure = (
@@ -228,17 +236,28 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
             and hot_momentum
             and late_momentum
         )
+        late_elevated_trim_pressure = (
+            pnl_pct is not None
+            and pnl_pct >= _late_elevated_trim_gain_threshold(is_fund_like)
+            and elevated_momentum
+            and late_momentum
+            and (stretched_price or extended_volume)
+        )
 
         if not trend_positive and loss_breakdown:
             action = PositionAction.EXIT
             rationale_parts.append("Use Exit because trend has weakened and the position is below cost.")
-        elif concentrated or trim_pressure or late_overheated_trim_pressure:
+        elif concentrated or trim_pressure or late_overheated_trim_pressure or late_elevated_trim_pressure:
             action = PositionAction.TRIM
             if concentrated:
                 rationale_parts.append("Use Trim because exposure or profit risk is elevated.")
             elif late_overheated_trim_pressure:
                 rationale_parts.append(
                     "Use Trim because an existing profit cushion is paired with very hot, late-stage momentum."
+                )
+            elif late_elevated_trim_pressure:
+                rationale_parts.append(
+                    "Use Trim because a meaningful gain is paired with elevated, late-stage momentum and weaker reward-to-risk for adding."
                 )
             else:
                 rationale_parts.append("Use Trim because profit cushion, hot momentum, and/or weak volume are stacked.")
@@ -275,6 +294,10 @@ def assess_position(db: Session, position: PortfolioPosition) -> dict:
             rationale_parts.append(f"RSI is {snapshot.rsi_14:.1f}.")
         if late_momentum_reasons:
             rationale_parts.append(f"Late-momentum checks are active: {', '.join(late_momentum_reasons)}.")
+        if stretched_price:
+            rationale_parts.append("Price is stretched enough above MA20 to reduce add attractiveness.")
+        if extended_volume:
+            rationale_parts.append(f"Volume is elevated at {volume_ratio:.2f}x average, which can mark a crowded move.")
         if light_volume:
             rationale_parts.append(f"Volume confirmation is light at {volume_ratio:.2f}x average.")
         elif volume_ratio is not None:

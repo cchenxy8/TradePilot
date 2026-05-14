@@ -5,6 +5,8 @@ PORTFOLIO_ASSESSMENT_THRESHOLDS = {
     "fund_large_gain_pct": 40.0,
     "stock_late_overheated_trim_gain_pct": 15.0,
     "fund_late_overheated_trim_gain_pct": 30.0,
+    "stock_late_elevated_trim_gain_pct": 18.0,
+    "fund_late_elevated_trim_gain_pct": 32.0,
     "stock_trim_gain_with_hot_rsi_pct": 28.0,
     "stock_trim_gain_with_hot_rsi_and_weak_volume_pct": 18.0,
     "fund_trim_gain_with_hot_rsi_pct": 45.0,
@@ -19,5 +21,7 @@ PORTFOLIO_ASSESSMENT_THRESHOLDS = {
     "late_momentum_rsi": 72.0,
     "late_momentum_price_above_ma20_pct": 7.0,
     "late_momentum_daily_change_pct": 4.0,
+    "stretched_price_above_ma20_pct": 5.0,
+    "extended_volume_ratio": 1.10,
     "light_volume_ratio": 0.75,
 }

@@ -4,13 +4,14 @@ import {
   listMarketSnapshots,
   listRecommendations,
   listWatchlistItems,
+  scanPotentialCandidates,
   updateWatchlistItem
 } from "../api/client";
-import type { BucketType, MarketSnapshot, Recommendation, WatchlistItem, WatchlistStatus } from "../api/types";
+import type { BucketType, MarketSnapshot, PotentialCandidate, Recommendation, WatchlistItem, WatchlistStatus } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { FilterBar } from "../components/FilterBar";
 import { LoadingState } from "../components/LoadingState";
-import { labelAction, labelBucket, labelSetup, labelWatchlistStatus } from "../utils/labels";
+import { labelAction, labelBucket, labelDecision, labelSetup, labelWatchlistStatus } from "../utils/labels";
 
 const statusOptions: Array<WatchlistStatus | "all"> = ["all", "watching", "candidate", "approved", "archived"];
 const workflowStatusOptions: WatchlistStatus[] = ["watching", "candidate", "approved", "archived"];
@@ -23,6 +24,14 @@ type WatchlistDraft = {
   next_step: string;
   trigger_condition: string;
   is_active: boolean;
+};
+
+type WorkflowPrompt = {
+  field: "status" | "next_step" | "trigger_condition";
+  label: string;
+  detail: string;
+  actionLabel: string;
+  value: WatchlistStatus | string;
 };
 
 function formatCurrency(value: number | null): string {
@@ -59,9 +68,121 @@ function getSnapshotFreshnessLabel(snapshot: MarketSnapshot): string {
   return "Research mode";
 }
 
+function formatScore(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatMetric(value: number | null | undefined, suffix = ""): string {
+  if (value === null || value === undefined) return "n/a";
+  return `${value.toFixed(2)}${suffix}`;
+}
+
+function getPotentialStatus(candidate: PotentialCandidate | undefined): string {
+  if (!candidate) return "No active signal";
+  return `${candidate.stage_label} / ${formatScore(candidate.potential_score)}`;
+}
+
+function buildAwarenessNotes(
+  item: WatchlistItem,
+  recommendation: Recommendation | undefined,
+  potential: PotentialCandidate | undefined
+): string[] {
+  const notes: string[] = [];
+  if (recommendation && new Date(recommendation.updated_at).getTime() > new Date(item.updated_at).getTime()) {
+    notes.push("Recommendation changed since workflow update");
+  }
+  if (potential?.potential_flag === "high") {
+    notes.push("Potential score is high");
+  }
+  if (potential?.setup_stage === "late_momentum") {
+    notes.push("Late momentum: check chase risk");
+  }
+  const priceVsMa20 = potential?.metrics.price_vs_ma20_pct;
+  const volumeRatio = potential?.metrics.volume_ratio;
+  if (typeof priceVsMa20 === "number" && priceVsMa20 >= -2 && priceVsMa20 <= 3) {
+    notes.push("Trigger may be getting closer");
+  }
+  if (typeof volumeRatio === "number" && volumeRatio >= 1) {
+    notes.push("Volume support is improving");
+  }
+  return notes.slice(0, 3);
+}
+
+function buildWorkflowPrompts(
+  item: WatchlistItem,
+  recommendation: Recommendation | undefined,
+  potential: PotentialCandidate | undefined
+): WorkflowPrompt[] {
+  const prompts: WorkflowPrompt[] = [];
+  const recommendationChanged =
+    recommendation !== undefined && new Date(recommendation.updated_at).getTime() > new Date(item.updated_at).getTime();
+  const priceVsMa20 = potential?.metrics.price_vs_ma20_pct;
+  const volumeRatio = potential?.metrics.volume_ratio;
+  const triggerCloser = typeof priceVsMa20 === "number" && priceVsMa20 >= -2 && priceVsMa20 <= 3;
+  const highEmergingPotential = potential?.potential_flag === "high" && potential.setup_stage === "emerging_potential";
+
+  if ((recommendationChanged || recommendation?.decision_status === "pending" || highEmergingPotential) && item.status === "watching") {
+    prompts.push({
+      field: "status",
+      label: "Status may need review",
+      detail: recommendation
+        ? `${labelAction(recommendation.recommendation_action)} recommendation is ${labelDecision(
+            recommendation.decision_status
+          ).toLowerCase()}.`
+        : "High emerging potential is active.",
+      actionLabel: "Set status",
+      value: "candidate"
+    });
+  }
+
+  if (recommendationChanged) {
+    prompts.push({
+      field: "next_step",
+      label: "Next step may need updating",
+      detail: "A newer recommendation is available for this name.",
+      actionLabel: "Set next step",
+      value: recommendation
+        ? `Review ${labelAction(recommendation.recommendation_action).toLowerCase()} recommendation: ${recommendation.why_now}`
+        : "Review updated system recommendation."
+    });
+  } else if (potential?.potential_flag === "high" && potential.setup_stage === "emerging_potential") {
+    prompts.push({
+      field: "next_step",
+      label: "Emerging setup needs a plan",
+      detail: "Potential discovery is high before becoming late momentum.",
+      actionLabel: "Set next step",
+      value: `Review emerging potential setup. ${potential.developing_signals[0] ?? potential.rationale}`
+    });
+  } else if (potential?.setup_stage === "late_momentum") {
+    prompts.push({
+      field: "next_step",
+      label: "Momentum risk needs review",
+      detail: "Signal is late enough that chase risk should be checked.",
+      actionLabel: "Set next step",
+      value: `Check late-momentum risk before acting. ${potential.cautions[0] ?? potential.rationale}`
+    });
+  }
+
+  if (triggerCloser || (typeof volumeRatio === "number" && volumeRatio >= 1.1)) {
+    prompts.push({
+      field: "trigger_condition",
+      label: "Trigger may be closer",
+      detail: `Price vs MA20 ${formatMetric(priceVsMa20, "%")} / volume ${formatMetric(volumeRatio, "x")}.`,
+      actionLabel: "Set trigger",
+      value: `Watch for confirmation near MA20 with volume support. Price vs MA20 ${formatMetric(
+        priceVsMa20,
+        "%"
+      )}; volume ${formatMetric(volumeRatio, "x")}.`
+    });
+  }
+
+  return prompts.slice(0, 2);
+}
+
 export function Watchlist() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [potentialCandidates, setPotentialCandidates] = useState<PotentialCandidate[]>([]);
   const [marketSnapshots, setMarketSnapshots] = useState<MarketSnapshot[]>([]);
   const [bucket, setBucket] = useState<BucketType | "all">("all");
   const [status, setStatus] = useState<WatchlistStatus | "all">("all");
@@ -98,6 +219,22 @@ export function Watchlist() {
 
   useEffect(() => {
     void load();
+  }, [bucket]);
+
+  useEffect(() => {
+    async function loadPotential() {
+      try {
+        const result = await scanPotentialCandidates({
+          bucket: bucket === "all" ? undefined : bucket,
+          limit: 50
+        });
+        setPotentialCandidates(result.candidates);
+      } catch {
+        setPotentialCandidates([]);
+      }
+    }
+
+    void loadPotential();
   }, [bucket]);
 
   useEffect(() => {
@@ -148,6 +285,33 @@ export function Watchlist() {
     }
     return map;
   }, [marketSnapshots]);
+  const potentialByWatchlist = useMemo(() => {
+    const map = new Map<number, PotentialCandidate>();
+    for (const candidate of potentialCandidates) {
+      if (!map.has(candidate.watchlist_item_id)) {
+        map.set(candidate.watchlist_item_id, candidate);
+      }
+    }
+    return map;
+  }, [potentialCandidates]);
+  const signalSummary = useMemo(() => {
+    const pendingRecommendations = recommendations.filter((recommendation) => recommendation.decision_status === "pending").length;
+    const emergingPotential = potentialCandidates.filter((candidate) => candidate.setup_stage === "emerging_potential").length;
+    const lateMomentum = potentialCandidates.filter((candidate) => candidate.setup_stage === "late_momentum").length;
+    const workflowPrompts = { status: 0, nextStep: 0, trigger: 0 };
+    for (const item of items) {
+      const recommendation =
+        recommendationsByWatchlist.get(item.id) ??
+        recommendations.find((candidate) => candidate.symbol.toUpperCase() === item.symbol.toUpperCase());
+      for (const prompt of buildWorkflowPrompts(item, recommendation, potentialByWatchlist.get(item.id))) {
+        if (prompt.field === "status") workflowPrompts.status += 1;
+        if (prompt.field === "next_step") workflowPrompts.nextStep += 1;
+        if (prompt.field === "trigger_condition") workflowPrompts.trigger += 1;
+      }
+    }
+    const workflowPromptTotal = workflowPrompts.status + workflowPrompts.nextStep + workflowPrompts.trigger;
+    return { pendingRecommendations, emergingPotential, lateMomentum, workflowPrompts, workflowPromptTotal };
+  }, [items, potentialByWatchlist, potentialCandidates, recommendations, recommendationsByWatchlist]);
 
   function getLinkedRecommendation(item: WatchlistItem): Recommendation | undefined {
     return (
@@ -158,6 +322,10 @@ export function Watchlist() {
 
   function getLatestSnapshot(item: WatchlistItem): MarketSnapshot | undefined {
     return snapshotsByWatchlistId.get(item.id) ?? snapshotsBySymbol.get(item.symbol.toUpperCase());
+  }
+
+  function getPotentialCandidate(item: WatchlistItem): PotentialCandidate | undefined {
+    return potentialByWatchlist.get(item.id);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -198,6 +366,10 @@ export function Watchlist() {
         [field]: value
       }
     }));
+  }
+
+  function applyWorkflowPrompt(itemId: number, prompt: WorkflowPrompt) {
+    updateDraft(itemId, prompt.field, prompt.value as WatchlistDraft[typeof prompt.field]);
   }
 
   function hasDraftChanges(item: WatchlistItem, draft: WatchlistDraft | undefined): boolean {
@@ -242,7 +414,30 @@ export function Watchlist() {
         <div>
           <p className="eyebrow">Watchlist</p>
           <h2>Research workspace</h2>
-          <p className="page-subtitle">Track the reason, status, next move, and trigger for every name under review.</p>
+          <p className="page-subtitle">Track your research plan next to recommendation and potential-discovery signals.</p>
+        </div>
+      </div>
+
+      <div className="signal-dashboard">
+        <div>
+          <span>Pending recommendations</span>
+          <strong>{signalSummary.pendingRecommendations}</strong>
+        </div>
+        <div>
+          <span>Emerging potential</span>
+          <strong>{signalSummary.emergingPotential}</strong>
+        </div>
+        <div>
+          <span>Late momentum</span>
+          <strong>{signalSummary.lateMomentum}</strong>
+        </div>
+        <div>
+          <span>Workflow prompts</span>
+          <strong>{signalSummary.workflowPromptTotal}</strong>
+          <small>
+            Status {signalSummary.workflowPrompts.status} / Next {signalSummary.workflowPrompts.nextStep} / Trigger{" "}
+            {signalSummary.workflowPrompts.trigger}
+          </small>
         </div>
       </div>
 
@@ -298,9 +493,12 @@ export function Watchlist() {
       <div className="watchlist-grid">
         {filteredItems.map((item) => {
           const linkedRecommendation = getLinkedRecommendation(item);
+          const potentialCandidate = getPotentialCandidate(item);
           const latestSnapshot = getLatestSnapshot(item);
           const draft = drafts[item.id];
           const changed = hasDraftChanges(item, draft);
+          const awarenessNotes = buildAwarenessNotes(item, linkedRecommendation, potentialCandidate);
+          const workflowPrompts = buildWorkflowPrompts(item, linkedRecommendation, potentialCandidate);
 
           return (
             <article className="watchlist-card" key={item.id}>
@@ -311,6 +509,53 @@ export function Watchlist() {
                 </div>
                 <span className={`status-pill ${item.status}`}>{labelWatchlistStatus(item.status)}</span>
               </div>
+              <section className="system-signal-panel">
+                <div className="signal-row">
+                  <div>
+                    <span>Recommendation</span>
+                    <strong>
+                      {linkedRecommendation
+                        ? `${labelAction(linkedRecommendation.recommendation_action)} / ${labelDecision(
+                            linkedRecommendation.decision_status
+                          )}`
+                        : "None linked"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Potential</span>
+                    <strong>{getPotentialStatus(potentialCandidate)}</strong>
+                  </div>
+                </div>
+                {potentialCandidate ? (
+                  <div className="signal-metrics">
+                    <span>{potentialCandidate.stage_label}</span>
+                    <span>Price vs MA20 {formatMetric(potentialCandidate.metrics.price_vs_ma20_pct, "%")}</span>
+                    <span>Volume {formatMetric(potentialCandidate.metrics.volume_ratio, "x")}</span>
+                  </div>
+                ) : null}
+                {awarenessNotes.length > 0 ? (
+                  <div className="awareness-strip">
+                    {awarenessNotes.map((note) => (
+                      <span key={note}>{note}</span>
+                    ))}
+                  </div>
+                ) : null}
+                {workflowPrompts.length > 0 ? (
+                  <div className="workflow-prompt-list">
+                    {workflowPrompts.map((prompt) => (
+                      <div className="workflow-prompt" key={`${prompt.field}-${prompt.label}`}>
+                        <div>
+                          <strong>{prompt.label}</strong>
+                          <span>{prompt.detail}</span>
+                        </div>
+                        <button type="button" onClick={() => applyWorkflowPrompt(item.id, prompt)}>
+                          {prompt.actionLabel}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
               <div className="watchlist-controls">
                 <label>
                   Bucket
